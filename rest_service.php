@@ -1,7 +1,7 @@
 <?php
 
 // Link the config params
-require_once ("configuration.php");
+require_once ("default_conf.php");
 require_once ("utils.php");
 require_once ("WSAPI/WSAPI.php");
 require_once ("classes/XMLHelper.php");
@@ -352,15 +352,14 @@ function createRegisterKitTask($admissionId, $registerStatus) {
 
 $kitInfo = new KitInfo();
 
-$debug = false;
-if ($debug) {
+if ($GLOBALS["DEBUG_MODE"]) {
     // TESTING
-    $kitInfo->setId("0099T");
+    $kitInfo->setId("7234A");
     $kitInfo->setBatch_number("B09876");
     $kitInfo->setExp_date("2020-12-01 00:00:00");
     $kitInfo->setManufacture_date("2020-09-01 22:21:00");
     $kitInfo->setManufacture_place("Barcelona");
-    service_dispatch_kit("LC5f609addb1d2f0.10855120", $kitInfo);
+    service_dispatch_kit("LC5f621e616f38f0.59976686", $kitInfo);
 } else {
     error_reporting(0);
     if ($_SERVER['REQUEST_METHOD'] == 'POST') {

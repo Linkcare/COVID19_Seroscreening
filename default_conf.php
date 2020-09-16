@@ -1,6 +1,6 @@
 <?php
 $GLOBALS['COMMIT'] = true;
-$GLOBALS["DBConnection_URI"] = "oci://covid_kits:C0v1dK1ts@dbproduction.linkcareapp.com:1521/linkcare";
+$GLOBALS["DBConnection_URI"] = "oci://covid_kits:xxxxxx@dbproduction.linkcareapp.com:1521/linkcare";
 
 $GLOBALS["LANG"] = "EN";
 $GLOBALS["DEFAULT_TIMEZONE"] = "Europe/Madrid";
@@ -25,4 +25,12 @@ $GLOBALS["KIT_INFO_Q_ID"]["BATCH_NUMBER"] = 6;
 // ID of the REGISTER_KIT FORM questions
 $GLOBALS["REGISTER_KIT_Q_ID"]["REGISTER_STATUS"] = 1;
 
+$GLOBALS["DEBUG_MODE"] = false;
+
+// Load particular configuration
+if (file_exists('conf/configuration.php')) {
+    include_once 'conf/configuration.php';
+}
+
 date_default_timezone_set($GLOBALS["DEFAULT_TIMEZONE"]);
+
