@@ -1,0 +1,11 @@
+.list-group-item{
+	padding: .75rem 0.25rem !important;
+}
+
+.navbar{
+	padding: .3rem 0.6rem !important;
+}
+
+.navbar-bar{
+	width: 200px !important;
+}
