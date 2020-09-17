@@ -393,7 +393,6 @@ function updateKitStatus($kitId, $status) {
     $client = new SoapClient(null, ['location' => $endpoint, 'uri' => $uri, "connection_timeout" => 10]);
     try {
         $result = $client->update_kit_status($kitId, $status);
-        echo json_encode($result);
     } catch (SoapFault $fault) {
         service_log("ERROR: SOAP Fault: (faultcode: {$fault->faultcode}, faultstring: {$fault->faultstring})");
     }
