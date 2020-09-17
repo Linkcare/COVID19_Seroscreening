@@ -13,14 +13,6 @@ $errorInfo = $GLOBALS["VIEW_MODEL"];
         ?>
         	</p>
         	
-        	<p>
-        		<?php
-
-        // echo (Localization::translateError($errorInfo->getErrorMessage()));
-        echo ($errorInfo->getErrorMessage());
-        ?>
-        	</p>
-        	
         </div>
     
     </body>

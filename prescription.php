@@ -27,6 +27,12 @@ if ($dbConnResult !== true) {
     include "views/Header.html.php";
 
     ?>    
+		<div id="div-qr-video" style="display:flex;position: absolute;top: 0;width:100%;height:100%;align-items: center;justify-content: center;z-index:1000;">
+    		<div style="position:relative;background-color:white;border-style: solid;border-width: 2px;box-shadow: 5px 10px rgba(0,0,0,0.1);border-radius: 5px;">
+              	<video id="qr-video" class="embed-responsive" style="transform: scaleX(-1);/*! position: absolute; */top: 0;"></video>
+          		<p id="stop-button" style="position: absolute;top: 0;text-align: right;width: 100%;padding-right: 15px;font-size: 18px;font-weight: bold;cursor: pointer;text-shadow:0.1rem 0.1rem rgba(255,255,255,.5);">&times;</p>
+            </div>
+        </div>
     
     	<div class="container col-lg-4 col-md-8">
     	<br>
@@ -54,17 +60,13 @@ if ($dbConnResult !== true) {
     ?>">     
     		<br>
     		<p id="cam-errors"></p>
-    		<div id="div-qr-video" style="display:none;position: absolute;top: 40%;border-style: solid;border-width: 2px;box-shadow: 5px 10px rgba(0,0,0,0.1);border-radius: 5px;">
-              	<video id="qr-video" class="embed-responsive" style="transform: scaleX(-1);/*! position: absolute; */top: 0;"></video>
-          		<p id="stop-button" style="position: absolute;top: 0;text-align: right;width: 100%;padding-right: 15px;font-size: 18px;font-weight: bold;">&times;</p>
-            </div>
-
     	</div>    	    	
 <?php
 }
 ?>
 
 	<script type="text/javascript">
+		$('#div-qr-video').hide();
 		$("#btnSubmit").click(function (e) {
 			var $kitId = $(this).attr("target_url");
 			window.location.href = $kitId + "&prescription_id=" + $("#idInput").val();
@@ -82,8 +84,8 @@ if ($dbConnResult !== true) {
 	<!-- Script area -->
     <script type="module">
         /* Import and Worker Path */
-        import QrScanner from "/js/qr-scanner.min.js";
-        QrScanner.WORKER_PATH = '/js/qr-scanner-worker.min.js';
+        import QrScanner from "./js/qr-scanner.min.js";
+        QrScanner.WORKER_PATH = './js/qr-scanner-worker.min.js';
         
         /* Variables */        
     

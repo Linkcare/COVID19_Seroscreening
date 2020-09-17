@@ -6,6 +6,7 @@ class KitInfo {
     const STATUS_ASSIGNED = "ASSIGNED";
     const STATUS_USED = "USED";
     const STATUS_EXPIRED = "EXPIRED";
+    const VALID_STATUS = [self::STATUS_DISCARDED, self::STATUS_NOT_USED, self::STATUS_ASSIGNED, self::STATUS_EXPIRED];
 
     /* Private members */
     private $id;
@@ -15,6 +16,48 @@ class KitInfo {
     private $exp_date;
     private $status;
     private $instance_url;
+    private $prescriptionId;
+
+    /**
+     * Returns the corresponding kit based in the id that is obtained from the url
+     *
+     * @return KitInfo object with the data from the database of said kit, or null if the kit doesn't exist or there was no id specified at the URL
+     */
+    static function getInstance($kitId) {
+        $kit = null;
+
+        if (!empty($kitId)) {
+            /* Obtain the id as a parameter and its corresponding info from the DB */
+            $id = [':id' => $kitId];
+
+            $sql = "SELECT
+                    ki.KIT_ID,
+                    ki.MANUFACTURE_PLACE,
+                    ki.MANUFACTURE_DATE,
+                    ki.EXPIRATION,
+                    ki.BATCH_NUMBER,
+                    ki.STATUS,
+                    li.URL
+                FROM
+                    KIT_INFO ki
+                LEFT JOIN LC_INSTANCES li ON ki.ID_INSTANCE = li.ID_INSTANCE
+                WHERE ki.KIT_ID = :id";
+
+            $result = Database::getInstance()->ExecuteBindQuery($sql, $id);
+
+            if ($result->Next()) {
+                $kit = new KitInfo();
+                $kit->setId($result->GetField('KIT_ID'));
+                $kit->setManufacture_place($result->GetField('MANUFACTURE_PLACE'));
+                $kit->setManufacture_date(substr($result->GetField('MANUFACTURE_DATE'), 0, 16));
+                $kit->setBatch_number($result->GetField('BATCH_NUMBER'));
+                $kit->setExp_date(substr($result->GetField('EXPIRATION'), 0, 10));
+                $kit->setStatus($result->GetField("STATUS"));
+                $kit->setInstance_url($result->GetField('URL'));
+            }
+        }
+        return $kit;
+    }
 
     /* Get methods */
 
@@ -74,6 +117,14 @@ class KitInfo {
         return $this->instance_url;
     }
 
+    /**
+     *
+     * @return string
+     */
+    public function getPrescriptionId() {
+        return $this->prescriptionId;
+    }
+
     /* Set methods */
 
     /**
@@ -121,6 +172,22 @@ class KitInfo {
      * @param string $status
      */
     public function setStatus($status) {
+        if ($this->status == $status) {
+            return;
+        }
+        if (!in_array($status, self::VALID_STATUS)) {
+            return;
+        }
+
+        if ($this->status !== null || $status != self::STATUS_NOT_USED) {
+            // Do not update DATABASE if the current status is NULL and we are setting the status=STATUS_NOT_USED, because they are considered to be
+            // the same
+            $arrVariables[":status"] = $this->getStatus();
+            $arrVariables[":id"] = $this->getId();
+            $sql = "UPDATE KIT_INFO SET STATUS = :status WHERE KIT_ID = :id";
+            Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
+        }
+
         $this->status = $status;
     }
 
@@ -130,6 +197,14 @@ class KitInfo {
      */
     public function setInstance_url($instance_url) {
         $this->instance_url = $instance_url;
+    }
+
+    /**
+     *
+     * @param string $instance_url
+     */
+    public function setPrescriptionId($prescriptionId) {
+        $this->prescriptionId = $prescriptionId;
     }
 
     /* Other methods */

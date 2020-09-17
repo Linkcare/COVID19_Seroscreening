@@ -352,23 +352,13 @@ function createRegisterKitTask($admissionId, $registerStatus) {
 
 $kitInfo = new KitInfo();
 
-if ($GLOBALS["DEBUG_MODE"]) {
-    // TESTING
-    $kitInfo->setId("7234A");
-    $kitInfo->setBatch_number("B09876");
-    $kitInfo->setExp_date("2020-12-01 00:00:00");
-    $kitInfo->setManufacture_date("2020-09-01 22:21:00");
-    $kitInfo->setManufacture_place("Barcelona");
-    service_dispatch_kit("LC5f621e616f38f0.59976686", $kitInfo);
-} else {
-    error_reporting(0);
-    if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-        $kitInfo->setId($_POST["kit_id"]);
-        $kitInfo->setBatch_number($_POST["batch_number"]);
-        $kitInfo->setManufacture_place($_POST["manufacture_place"]);
-        $kitInfo->setManufacture_date($_POST["manufacture_date"]);
-        $kitInfo->setExp_date($_POST["expiration_date"]);
-        header('Content-type: application/json');
-        echo service_dispatch_kit($_POST["token"], $kitInfo);
-    }
+error_reporting(0);
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $kitInfo->setId($_POST["kit_id"]);
+    $kitInfo->setBatch_number($_POST["batch_number"]);
+    $kitInfo->setManufacture_place($_POST["manufacture_place"]);
+    $kitInfo->setManufacture_date($_POST["manufacture_date"]);
+    $kitInfo->setExp_date($_POST["expiration_date"]);
+    header('Content-type: application/json');
+    echo service_dispatch_kit($_POST["token"], $kitInfo);
 }

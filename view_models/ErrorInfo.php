@@ -15,7 +15,7 @@ class ErrorInfo {
      * @param string $errorCode
      * @param string $errorMessage
      */
-    public function __construct($errorCode, $errorMessage = null) {
+    public function __construct($errorCode = null, $errorMessage = null) {
         $this->errorCode = $errorCode;
         $this->errorMessage = $errorMessage;
     }
@@ -33,6 +33,9 @@ class ErrorInfo {
      * @return string
      */
     public function getErrorMessage() {
+        if (!$this->errorMessage && $this->getErrorCode()) {
+            $this->errorMessage = Localization::translateError($this->getErrorCode());
+        }
         return $this->errorMessage;
     }
 }
