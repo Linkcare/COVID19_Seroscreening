@@ -7,6 +7,8 @@ require_once "classes/Localization.php";
 require_once 'view_models/ErrorInfo.php';
 require_once 'view_models/KitInfo.php';
 
+$_SESSION["KIT"] = NULL;
+
 /* Initialize the connection to the DB */
 $dbConnResult = Database::init($GLOBALS["DBConnection_URI"]);
 
@@ -78,6 +80,7 @@ function setLanguage() {
  */
 function openKitInfoView($kit) {
     $GLOBALS["VIEW_MODEL"] = $kit;
+    include "views/Header.html.php";
     include "views/KitInfo.html.php";
 }
 
@@ -88,6 +91,7 @@ function openKitInfoView($kit) {
  */
 function openErrorInfoView($err) {
     $GLOBALS["VIEW_MODEL"] = $err;
+    include "views/Header.html.php";
     include "views/ErrorInfo.html.php";
 }
 
@@ -113,7 +117,7 @@ function getKitData() {
                     li.URL
                 FROM
                     KIT_INFO ki
-                LEFT JOIN LC_INSTANCES li ON ki.ID_INSTANCE = li.ID_INSTANCE 
+                LEFT JOIN LC_INSTANCES li ON ki.ID_INSTANCE = li.ID_INSTANCE
                 WHERE ki.KIT_ID = :id";
 
         $result = Database::getInstance()->ExecuteBindQuery($sql, $id);

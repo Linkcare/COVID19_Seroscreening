@@ -1,4 +1,5 @@
 <?php
+session_start();
 $GLOBALS['COMMIT'] = true;
 $GLOBALS["DBConnection_URI"] = "oci://covid_kits:xxxxxx@dbproduction.linkcareapp.com:1521/linkcare";
 
