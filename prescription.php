@@ -1,11 +1,5 @@
 <?php
 require_once 'default_conf.php';
-require_once "classes/Database.Class.php";
-require_once "classes/class.DbManagerOracle.php";
-require_once "classes/class.DbManagerResultsOracle.php";
-require_once "classes/Localization.php";
-require_once 'view_models/ErrorInfo.php';
-require_once 'view_models/KitInfo.php';
 
 if (isset($_SESSION["KIT"])) {
     /* @var KitInfo $kit */

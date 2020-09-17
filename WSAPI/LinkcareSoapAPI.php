@@ -22,13 +22,12 @@ class LinkcareSoapAPI {
 
     /**
      *
-     * @param string $url
+     * @param string $endpoint
      * @param int $timezone
      * @param string $token
      * @return LinkcareSoapAPI
      */
-    static public function init($url, $timezone, $token = null) {
-        $endpoint = $url . "/ServerWSDL.php";
+    static public function init($endpoint, $timezone, $token = null) {
         $wsdl = null; // $url . "/LINKCARE.wsdl.php";
 
         // Obtenemos el TOKEN si ya existe o iniciamos sesión si no existe
@@ -48,8 +47,9 @@ class LinkcareSoapAPI {
         return self::$api;
     }
 
-    /*
-     * @return APISession
+    /**
+     *
+     * @return LinkcareSoapAPI
      */
     static public function getInstance() {
         return self::$api;
@@ -151,6 +151,17 @@ class LinkcareSoapAPI {
     }
 
     /**
+     *
+     * @param APITask $task
+     */
+    function task_set($task) {
+        $xml = new XMLHelper('task');
+        $task->toXML($xml, null);
+        $params = ["task" => $xml->toString()];
+        $resp = $this->invoke('task_set', $params);
+    }
+
+    /**
      * Returns the list of ACTIVITIES of a FORM
      *
      * @param int $taskId
@@ -194,28 +205,19 @@ class LinkcareSoapAPI {
     }
 
     /**
-     *
-     * @param APITask $task
-     */
-    function task_set($task) {
-        $xml = new XMLHelper('task');
-        $task->toXML($xml, null);
-        $params = ["task" => $xml->toString()];
-        $resp = $this->invoke('task_set', $params);
-    }
-
-    /**
      * Creates a new CASE
      * The value returned is the ID of the new CASE
      *
-     * @param string $caseContactXML
+     * @param APIContact $contact
      * @param int $subscriptionId
      * @param boolean $allowIncomplete
      * @return int
      */
-    function case_insert($caseContactXML, $subscriptionId = null, $allowIncomplete = false) {
-        $caseId = null;
-        $params = ["case" => $caseContactXML, "subscription" => $subscriptionId, "allow_incomplete" => boolToText($allowIncomplete)];
+    function case_insert($contact, $subscriptionId = null, $allowIncomplete = false) {
+        $xml = new XMLHelper("case");
+        $contact->toXML($xml, null);
+
+        $params = ["case" => $xml->toString(), "subscription" => $subscriptionId, "allow_incomplete" => boolToText($allowIncomplete)];
         $resp = $this->invoke('case_insert', $params);
         if (!$resp->getErrorCode()) {
             if ($result = simplexml_load_string($resp->getResult())) {
@@ -224,6 +226,26 @@ class LinkcareSoapAPI {
         }
 
         return $caseId;
+    }
+
+    /**
+     *
+     * @param string $caseId
+     * @param string $subscriptionId
+     * @param string $admissionId
+     * @return APIContact
+     */
+    public function case_get_contact($caseId, $subscriptionId = null, $admissionId = null) {
+        $contact = null;
+        $params = ["case" => $caseId, "subscription" => $subscriptionId, "admission" => $admissionId];
+        $resp = $this->invoke('case_get_contact', $params);
+        if (!$resp->getErrorCode()) {
+            if ($found = simplexml_load_string($resp->getResult())) {
+                $contact = APIContact::parseXML($found);
+            }
+        }
+
+        return $contact;
     }
 
     /**

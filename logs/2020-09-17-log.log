@@ -2,3 +2,5 @@
 -----Date:17-09-2020 10:31:54 The selected kit is invalid
 -----Date:17-09-2020 10:32:25 The selected kit is invalid
 -----Date:17-09-2020 10:32:46 The selected kit is invalid
+-----Date:17-09-2020 16:25:58 Error invoking function case_insert! (faultcode: SOAP-ENV:Server, faultstring: SimpleXMLElement::__construct() expects parameter 1 to be string, object given
+-----Date:17-09-2020 16:27:19 Error invoking function case_insert! (faultcode: SOAP-ENV:Server, faultstring: SimpleXMLElement::__construct() expects parameter 1 to be string, object given

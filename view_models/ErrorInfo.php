@@ -5,6 +5,7 @@ class ErrorInfo {
     const DB_CONNECTION_ERROR = "DB_CONNECTION_ERROR";
     const INVALID_KIT = "INVALID_KIT";
     const INVALID_STATUS = "INVALID_STATUS";
+    const KIT_ALREADY_USED = "KIT_ALREADY_USED";
 
     /* Private members */
     private $errorCode;

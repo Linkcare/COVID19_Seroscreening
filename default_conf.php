@@ -1,13 +1,27 @@
 <?php
 session_start();
+
+require_once ("utils.php");
+require_once ("WSAPI/WSAPI.php");
+require_once "classes/Database.Class.php";
+require_once "classes/class.DbManagerOracle.php";
+require_once "classes/class.DbManagerResultsOracle.php";
+require_once 'view_models/KitInfo.php';
+require_once 'view_models/ErrorInfo.php';
+require_once "classes/Localization.php";
+require_once "classes/LC2Action.php";
+
 $GLOBALS['COMMIT'] = true;
 $GLOBALS["DBConnection_URI"] = "oci://covid_kits:xxxxxx@dbproduction.linkcareapp.com:1521/linkcare";
 
 $GLOBALS["LANG"] = "EN";
 $GLOBALS["DEFAULT_TIMEZONE"] = "Europe/Madrid";
-$GLOBALS["WS_LINK"] = "https://test-api.linkcareapp.com";
-// $GLOBALS["WS_LINK"] = "https://dev-api.linkcareapp.com";
-// $GLOBALS["WS_LINK"] = "http://localhost:8888";
+
+// Url of the WS-API where the ADMISSIONs will be created
+$GLOBALS["WS_LINK"] = "https://test-api.linkcareapp.com/ServerWSDL.php";
+
+// Url of the external service that manages the KIT Information. Used to update the Kit Status
+$GLOBALS["KIT_INFO_LINK"] = "https://test-api.linkcareapp.com/";
 
 $GLOBALS["PROGRAM_CODE"] = "SEROSCREENING";
 $GLOBALS["TASK_CODES"]["KIT_INFO"] = "KIT_INFO";

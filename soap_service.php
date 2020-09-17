@@ -3,13 +3,6 @@ ini_set("soap.wsdl_cache_enabled", 0);
 
 // Link the config params
 require_once ("default_conf.php");
-require_once ("utils.php");
-require_once "classes/Database.Class.php";
-require_once "classes/class.DbManagerOracle.php";
-require_once "classes/class.DbManagerResultsOracle.php";
-require_once "classes/Localization.php";
-require_once 'view_models/ErrorInfo.php';
-require_once 'view_models/KitInfo.php';
 
 setSystemTimeZone();
 

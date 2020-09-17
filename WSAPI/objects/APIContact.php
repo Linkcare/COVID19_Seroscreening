@@ -315,6 +315,20 @@ class APIContact {
      * METHODS
      * **********************************
      */
+    /**
+     * Searches the list of Identifiers of this Contact and returns the one that matches the $id passed (or null if not found)
+     *
+     * @param string $id
+     * @return APIIdentifier
+     */
+    public function findIdentifier($id) {
+        foreach ($this->getIdentifiers() as $x) {
+            if ($x->getId() == $id) {
+                return $x;
+            }
+        }
+        return null;
+    }
 
     /**
      *

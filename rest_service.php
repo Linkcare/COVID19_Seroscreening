@@ -2,11 +2,6 @@
 
 // Link the config params
 require_once ("default_conf.php");
-require_once ("utils.php");
-require_once ("WSAPI/WSAPI.php");
-require_once ("classes/XMLHelper.php");
-require_once ("classes/LC2Action.php");
-require_once ("view_models/KitInfo.php");
 
 setSystemTimeZone();
 
@@ -20,18 +15,26 @@ function service_dispatch_kit($token = null, $kitInfo) {
     $timezone = "0";
 
     if (!preg_match('/^(\w{5,7})$/', $kitInfo->getId())) {
+        $error = new ErrorInfo(ErrorInfo::INVALID_KIT);
         $lc2Action = new LC2Action(LC2Action::ACTION_ERROR_MSG);
-        $lc2Action->setErrorMessage("Invalid KIT ID");
+        $lc2Action->setErrorMessage($error->getErrorMessage());
         service_log("ERROR: Invalid KIT ID");
     } else {
         try {
             LinkcareSoapAPI::init($GLOBALS["WS_LINK"], $timezone, $token);
+            $session = LinkcareSoapAPI::getInstance()->getSession();
+            $lang = $session->getLanguage();
+            Localization::init($session->getLanguage());
             // Find the SUBSCRIPTION of the PROGRAM "Seroscreening" of the active user
             $lc2Action = processKit($kitInfo);
         } catch (APIException $e) {
             $lc2Action = new LC2Action(LC2Action::ACTION_ERROR_MSG);
             $lc2Action->setErrorMessage($e->getMessage());
             service_log("ERROR: " . $e->getMessage());
+        } catch (KitException $k) {
+            $lc2Action = new LC2Action(LC2Action::ACTION_ERROR_MSG);
+            $lc2Action->setErrorMessage($k->getMessage());
+            service_log("ERROR: " . $k->getMessage());
         }
     }
 
@@ -67,6 +70,18 @@ function processKit($kitInfo) {
         // The KIT ID is new. Create a new ADMISSION
         $lc2Action = createNewAdmission($kitInfo, $subscriptionId);
     } else {
+        if ($kitInfo->getPrescriptionId()) {
+            // A STUDY_REF has been provided, so we must ensure that the CASE found has the indicated STUDY_REF
+            $caseContact = $api->case_get_contact($caseId, $subscriptionId);
+            $studyRef = $caseContact->findIdentifier("STUDY_REF");
+            if ($studyRef && $studyRef->getValue() != $kitInfo->getPrescriptionId()) {
+                /*
+                 * ERROR: the STUDY REF provided is different than the one assigned to the CASE. This means that we are scanning that the KitID was
+                 * previously used for another CASE
+                 */
+                throw new KitException(ErrorInfo::KIT_ALREADY_USED);
+            }
+        }
         // Find the active ADMISSION for the CASE found
         $admissions = $api->case_admission_list($caseId, true, $subscriptionId);
         if ($api->errorCode()) {
@@ -91,8 +106,7 @@ function processKit($kitInfo) {
                 $lc2Action->setAdmissionId($finishedAdmission->getId());
             } else {
                 // The Kit ID exists for the patient, but there are no ADMISSIONs. This could mean that the Kit was processed in another SUBSCRIPTION
-                $lc2Action->setActionType(LC2Action::ACTION_ERROR_MSG);
-                $lc2Action->setErrorMessage("This KIT has already been used!");
+                throw new KitException(ErrorInfo::KIT_ALREADY_USED);
             }
         } else {
             // We have found an existing ADMISSION for this Kit ID
@@ -138,17 +152,19 @@ function createNewAdmission($kitInfo, $subscriptionId) {
     $api = LinkcareSoapAPI::getInstance();
 
     // Create the case
-    $case = new APIContact();
+    $contactInfo = new APIContact();
 
     $device = new APIContactChannel();
     $device->setValue("SEROSCREENING:" . $kitInfo->getId());
-    $case->addDevice($device);
+    $contactInfo->addDevice($device);
 
-    $xml = new XMLHelper("case");
-    $case->toXML($xml, null);
+    if ($kitInfo->getPrescriptionId()) {
+        $studyRef = new APIIdentifier('STUDY_REF', $kitInfo->getPrescriptionId());
+        $contactInfo->addIdentifier($studyRef);
+    }
 
     // Create a new CASE with incomplete data (only the KIT_ID)
-    $caseId = $api->case_insert($xml->toString(), $subscriptionId, true);
+    $caseId = $api->case_insert($contactInfo, $subscriptionId, true);
     $lc2Action->setCaseId($caseId);
 
     if ($api->errorCode()) {
@@ -186,6 +202,8 @@ function createNewAdmission($kitInfo, $subscriptionId) {
             $api->admission_delete($admissionId);
         }
         $api->case_delete($caseId, "DELETE");
+    } else {
+        updateKitStatus($kitInfo->getId(), KitInfo::STATUS_ASSIGNED);
     }
 
     return $lc2Action;
@@ -204,18 +222,14 @@ function updateAdmission($admission, $kitInfo) {
     $lc2Action->setAdmissionId($admission->getId());
     $lc2Action->setCaseId($admission->getCaseId());
 
-    // If KIT_INFO Task does not exist yet, then add it
-    $kitInfoExists = false;
     $tasks = $api->case_get_task_list($admission->getCaseId(), null, null, '{"admission" : "' . $admission->getId() . '"}');
+    $registerKitTask = null;
     foreach ($tasks as $t) {
-        if ($t->getTaskCode() == $GLOBALS["TASK_CODES"]["KIT_INFO"]) {
-            $kitInfoExists = true;
+        if ($t->getTaskCode() == $GLOBALS["TASK_CODES"]["REGISTER_KIT"] && $t->getStatus() != "CLOSED") {
+            // There exists an open REGISTER KIT TASK
+            $registerKitTask = $t;
             break;
         }
-    }
-    if (!$kitInfoExists) {
-        // The ADMISSION does not have the KIT_INFO TASK
-        createKitInfoTask($admission->getId(), $kitInfo);
     }
 
     $registerStatus = 3;
@@ -223,10 +237,26 @@ function updateAdmission($admission, $kitInfo) {
         $registerStatus = 2;
     }
 
-    list($taskId, $formId) = createRegisterKitTask($admission->getId(), $registerStatus);
-    $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_FORM);
-    $lc2Action->setTaskId($taskId);
-    $lc2Action->setFormId($formId);
+    if (!$registerKitTask) {
+        // Create a new REGISTER KIT TASK
+        list($taskId, $formId) = createRegisterKitTask($admission->getId(), $registerStatus);
+        $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_FORM);
+        $lc2Action->setTaskId($taskId);
+        $lc2Action->setFormId($formId);
+    } else {
+        /*
+         * The REGISTER KIT TASK already exists and it is OPEN. Redirect to the FORM if possible, or to the TASK if the FORM is not found
+         */
+        $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_TASK);
+        $lc2Action->setTaskId($registerKitTask->getId());
+        foreach ($registerKitTask->getForms() as $f) {
+            if ($f->getFormCode() == $GLOBALS["FORM_CODES"]["REGISTER_KIT"]) {
+                $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_FORM);
+                $lc2Action->setFormId($f->getId());
+                break;
+            }
+        }
+    }
 
     return $lc2Action;
 }
@@ -350,11 +380,31 @@ function createRegisterKitTask($admissionId, $registerStatus) {
     return [$taskId, $targetForm ? $targetForm->getId() : null];
 }
 
+/**
+ * Sends a request to the remote service that manages the Kits to change the status of a Kit
+ *
+ * @param string $kitId
+ * @param string $status
+ */
+function updateKitStatus($kitId, $status) {
+    $endpoint = $GLOBALS["KIT_INFO_LINK"];
+    $uri = parse_url($endpoint)['scheme'] . '://' . parse_url($endpoint)['host'] . ":" . parse_url($endpoint)['port'];
+
+    $client = new SoapClient(null, ['location' => $endpoint, 'uri' => $uri, "connection_timeout" => 10]);
+    try {
+        $result = $client->update_kit_status($kitId, $status);
+        echo json_encode($result);
+    } catch (SoapFault $fault) {
+        service_log("ERROR: SOAP Fault: (faultcode: {$fault->faultcode}, faultstring: {$fault->faultstring})");
+    }
+}
+
 $kitInfo = new KitInfo();
 
 error_reporting(0);
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $kitInfo->setId($_POST["kit_id"]);
+    $kitInfo->setPrescriptionId($_POST["prescription_id"]);
     $kitInfo->setBatch_number($_POST["batch_number"]);
     $kitInfo->setManufacture_place($_POST["manufacture_place"]);
     $kitInfo->setManufacture_date($_POST["manufacture_date"]);

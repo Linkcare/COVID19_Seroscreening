@@ -1,6 +1,4 @@
 <?php
-require_once 'view_models/KitInfo.php';
-require_once 'view_models/ErrorInfo.php';
 
 class Localization {
     const SUPPORTED_LOCALES = ["ca", "en", "es", "zh"];

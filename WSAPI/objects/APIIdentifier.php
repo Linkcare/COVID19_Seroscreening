@@ -5,6 +5,11 @@ class APIIdentifier {
     private $description;
     private $value;
 
+    public function __construct($id, $value) {
+        $this->setId($id);
+        $this->setValue($value);
+    }
+
     /**
      *
      * @param SimpleXMLElement $xmlNode

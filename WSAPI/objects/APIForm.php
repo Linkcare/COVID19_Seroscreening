@@ -22,7 +22,11 @@ class APIForm {
         }
         $form = new APIForm();
         $form->id = (string) $xmlNode->ref;
-        $form->formCode = NullableString((string) $xmlNode->form_code);
+        if ($xmlNode->code) {
+            $form->formCode = NullableString((string) $xmlNode->code);
+        } else {
+            $form->formCode = NullableString((string) $xmlNode->form_code);
+        }
 
         // form_get_summary retuns the information of the FORM into th subnode "data"
         $formInfoNode = $xmlNode->data ? $xmlNode->data : $xmlNode;

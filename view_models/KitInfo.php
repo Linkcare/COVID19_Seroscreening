@@ -182,7 +182,7 @@ class KitInfo {
         if ($this->status !== null || $status != self::STATUS_NOT_USED) {
             // Do not update DATABASE if the current status is NULL and we are setting the status=STATUS_NOT_USED, because they are considered to be
             // the same
-            $arrVariables[":status"] = $this->getStatus();
+            $arrVariables[":status"] = $status;
             $arrVariables[":id"] = $this->getId();
             $sql = "UPDATE KIT_INFO SET STATUS = :status WHERE KIT_ID = :id";
             Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
