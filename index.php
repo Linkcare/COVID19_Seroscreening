@@ -17,7 +17,7 @@ if ($dbConnResult !== true) {
     if ($kit = KitInfo::getInstance($_GET['id'])) {
         /* If the kit has been called to be discarded, we set and update its values before showing, if not, the kit will remain the same */
         if (isset($_GET['discard'])) {
-            $kit->setStatus(KitInfo::STATUS_DISCARDED);
+            $kit->changeStatus(KitInfo::STATUS_DISCARDED);
         }
 
         switch ($kit->getStatus()) {
@@ -27,7 +27,7 @@ if ($dbConnResult !== true) {
             case KitInfo::STATUS_NOT_USED :
                 if (strtotime($kit->getExp_date()) - strtotime($kit->getManufacture_date()) < 0) {
                     /* The kit is not valid, athough it's not used, it has expired */
-                    $kit->setStatus(KitInfo::STATUS_EXPIRED);
+                    $kit->changeStatus(KitInfo::STATUS_EXPIRED);
                 } else {
                     $kit->generateURLtoLC2();
                 }
