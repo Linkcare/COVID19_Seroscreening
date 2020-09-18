@@ -5,7 +5,7 @@ class APIIdentifier {
     private $description;
     private $value;
 
-    public function __construct($id, $value) {
+    public function __construct($id = null, $value = null) {
         $this->setId($id);
         $this->setValue($value);
     }

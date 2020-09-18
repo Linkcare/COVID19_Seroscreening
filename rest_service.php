@@ -225,17 +225,14 @@ function updateAdmission($admission, $kitInfo) {
     $tasks = $api->case_get_task_list($admission->getCaseId(), null, null, '{"admission" : "' . $admission->getId() . '"}');
     $registerKitTask = null;
     foreach ($tasks as $t) {
-        if ($t->getTaskCode() == $GLOBALS["TASK_CODES"]["REGISTER_KIT"] && $t->getStatus() != "CLOSED") {
+        if ($t->getTaskCode() == $GLOBALS["TASK_CODES"]["REGISTER_KIT"] && $t->getStatus() != "DONE") {
             // There exists an open REGISTER KIT TASK
             $registerKitTask = $t;
             break;
         }
     }
 
-    $registerStatus = 3;
-    if ($admission->getStatus() == APIAdmission::STATUS_INCOMPLETE) {
-        $registerStatus = 2;
-    }
+    $registerStatus = ($admission->getStatus() == APIAdmission::STATUS_INCOMPLETE) ? 2 : 3;
 
     if (!$registerKitTask) {
         // Create a new REGISTER KIT TASK
