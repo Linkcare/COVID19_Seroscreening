@@ -6,7 +6,7 @@ class KitInfo {
     const STATUS_ASSIGNED = "ASSIGNED";
     const STATUS_USED = "USED";
     const STATUS_EXPIRED = "EXPIRED";
-    const VALID_STATUS = [self::STATUS_DISCARDED, self::STATUS_NOT_USED, self::STATUS_ASSIGNED, self::STATUS_EXPIRED];
+    const VALID_STATUS = [self::STATUS_DISCARDED, self::STATUS_NOT_USED, self::STATUS_ASSIGNED, self::STATUS_EXPIRED, self::STATUS_USED];
 
     /* Private members */
     private $id;
@@ -172,22 +172,6 @@ class KitInfo {
      * @param string $status
      */
     public function setStatus($status) {
-        if ($this->status == $status) {
-            return;
-        }
-        if (!in_array($status, self::VALID_STATUS)) {
-            return;
-        }
-
-        if ($this->status !== null || $status != self::STATUS_NOT_USED) {
-            // Do not update DATABASE if the current status is NULL and we are setting the status=STATUS_NOT_USED, because they are considered to be
-            // the same
-            $arrVariables[":status"] = $status;
-            $arrVariables[":id"] = $this->getId();
-            $sql = "UPDATE KIT_INFO SET STATUS = :status WHERE KIT_ID = :id";
-            Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
-        }
-
         $this->status = $status;
     }
 
@@ -231,5 +215,33 @@ class KitInfo {
                         $this->getBatch_number());
                 break;
         }
+    }
+
+    /**
+     * Function to change the status of a kit and update it at the DB
+     *
+     * @param string $status new status
+     */
+    public function changeStatus($status) {
+        // If the new status is the same as the old one, exit the function
+        if ($this->status == $status) {
+            return;
+        }
+        // If the aim is to set a new status that is not declared, exit the function as well
+        if (!in_array($status, self::VALID_STATUS)) {
+            return;
+        }
+
+        if ($this->status !== null || $status != self::STATUS_NOT_USED) {
+            // Do not update DATABASE if the current status is NULL and we are setting the status=STATUS_NOT_USED,
+            // because they are considered to be the same
+            $arrVariables[":status"] = $status;
+            $arrVariables[":id"] = $this->getId();
+            $sql = "UPDATE KIT_INFO SET STATUS = :status WHERE KIT_ID = :id";
+            Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
+        }
+
+        // Finally modify the status of the object itself
+        $this->setStatus($status);
     }
 }
