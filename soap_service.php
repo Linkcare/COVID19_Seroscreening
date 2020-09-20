@@ -28,7 +28,7 @@ function update_kit_status($kit_id, $status) {
     }
 
     if (!$err->getErrorCode()) {
-        $kitInfo->setStatus($status);
+        $kitInfo->changeStatus($status);
     }
 
     return ["result" => $err->getErrorCode() ? "KO" : "OK", "ErrorMsg" => $err->getErrorMessage()];

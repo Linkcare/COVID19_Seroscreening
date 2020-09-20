@@ -187,7 +187,7 @@ function createNewAdmission($kitInfo, $subscriptionId) {
 
     try {
         createKitInfoTask($admissionId, $kitInfo);
-        list($taskId, $formId) = createRegisterKitTask($admissionId, 1);
+        list($taskId, $formId) = createRegisterKitTask($admissionId, ($studyRef !== null ? 2 : 1));
         $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_FORM);
         $lc2Action->setTaskId($taskId);
         $lc2Action->setFormId($formId);
