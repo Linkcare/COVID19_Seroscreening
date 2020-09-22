@@ -71,9 +71,9 @@ function processKit($kitInfo) {
         $lc2Action = createNewAdmission($kitInfo, $subscriptionId);
     } else {
         if ($kitInfo->getPrescriptionId()) {
-            // A STUDY_REF has been provided, so we must ensure that the CASE found has the indicated STUDY_REF
+            // A PRESCRIPTION_REF has been provided, so we must ensure that the CASE found has the indicated PRESCRIPTION_REF
             $caseContact = $api->case_get_contact($caseId, $subscriptionId);
-            $studyRef = $caseContact->findIdentifier("STUDY_REF");
+            $studyRef = $caseContact->findIdentifier("PRESCRIPTION_REF");
             if ($studyRef && $studyRef->getValue() != $kitInfo->getPrescriptionId()) {
                 /*
                  * ERROR: the STUDY REF provided is different than the one assigned to the CASE. This means that we are scanning that the KitID was
@@ -159,8 +159,9 @@ function createNewAdmission($kitInfo, $subscriptionId) {
     $contactInfo->addDevice($device);
 
     if ($kitInfo->getPrescriptionId()) {
-        $studyRef = new APIIdentifier('STUDY_REF', $kitInfo->getPrescriptionId());
+        $studyRef = new APIIdentifier('PRESCRIPTION_REF', $kitInfo->getPrescriptionId());
         $contactInfo->addIdentifier($studyRef);
+        $contactInfo->setName($kitInfo->getPrescriptionId());
     }
 
     // Create a new CASE with incomplete data (only the KIT_ID)
