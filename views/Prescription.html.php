@@ -9,7 +9,7 @@
         <br>
         	<p>
         	<a href="/index.php?id=<?php
-        echo ($kit->getId());
+        echo ($kit->getId() . "&culture=" . Localization::getLang());
         ?>"><i class="btn fa fa-arrow-left" aria-hidden="true"></i></a>
         	</p>
         	<div class="form-group">
@@ -21,7 +21,9 @@
           	</div>
           	<br>          	
         	<div class="text-center">
-        		<button id="start-button" style="font-size: 80px;" class="fa fa-qrcode btn btn-light" aria-hidden="true"></button>
+        		<button id="start-button" class="btn btn-light mx-auto px-1">
+        			<img id="start-button" class="img-fluid mx-auto" style="width: 60%;" src="img/qr.png">
+    			</button>        		
         	</div>
         	<br>
         	<input id="btnSubmit" class="btn btn-success text-center btn-block btn-lg" target_url="<?php
@@ -35,7 +37,8 @@
         	<p id="cam-errors"></p>
         </div>  
 	</body>
-</html>  	    	
+</html>  	    
+	
 
 
 <!-- Script area for the button visibility and submit button url composing -->

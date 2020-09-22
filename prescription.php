@@ -18,6 +18,9 @@ if ($dbConnResult !== true) {
     include "views/Header.html.php";
     include "views/ErrorInfo.html.php";
 } else {
+    /* Initialize user language */
+    setLanguage();
+
     include "views/Header.html.php";
     include "views/Prescription.html.php";
 }

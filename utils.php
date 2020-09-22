@@ -172,3 +172,14 @@ function currentDate($timezone = null) {
     $dateInTimezone = date('Y-m-d H:i:s', strtotime("$timezone minutes", strtotime($dateUTC)));
     return $dateInTimezone;
 }
+
+/**
+ * Set the language of the website
+ */
+function setLanguage() {
+    /* Initialize user language */
+    if (!($lang = $_GET['culture'])) {
+        $lang = substr($_SERVER['HTTP_ACCEPT_LANGUAGE'], 0, 2);
+    }
+    Localization::init($lang);
+}

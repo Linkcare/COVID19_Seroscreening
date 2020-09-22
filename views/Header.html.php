@@ -49,10 +49,14 @@
               	<?php
             for ($i = 0; $i < sizeof(Localization::SUPPORTED_LOCALES); $i++) {
                 $url = substr($_SERVER['REQUEST_URI'], 0, strpos($_SERVER['REQUEST_URI'], "/?"));
-                $id = $_GET['id'];
-                $lang = Localization::SUPPORTED_LOCALES[$i];
-                echo ('<li class="nav-item"><a class="nav-link" href="' . $url . '?id=' . $id . '&culture=' . $lang . '">' .
-                        Localization::translateLanguage($i) . '</a></li>');
+                $langUrl = Localization::SUPPORTED_LOCALES[$i];
+                if ($id = $_GET['id']) {
+                    echo ('<li class="nav-item"><a class="nav-link" href="' . $url . '?id=' . $id . '&culture=' . $langUrl . '">' .
+                            Localization::translateLanguage($i) . '</a></li>');
+                } else {
+                    echo ('<li class="nav-item"><a class="nav-link" href="' . $url . '?culture=' . $langUrl . '">' .
+                            Localization::translateLanguage($i) . '</a></li>');
+                }
             }
             ?>
             

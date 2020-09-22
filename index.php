@@ -59,17 +59,6 @@ if ($dbConnResult !== true) {
 }
 
 /**
- * Set the language of the website
- */
-function setLanguage() {
-    /* Initialize user language */
-    if (!($lang = $_GET['culture'])) {
-        $lang = substr($_SERVER['HTTP_ACCEPT_LANGUAGE'], 0, 2);
-    }
-    Localization::init($lang);
-}
-
-/**
  * Opens the KitInfo view page
  *
  * @param KitInfo $kit

@@ -20,6 +20,15 @@ class Localization {
     }
 
     /**
+     * Getter function for the language parameter in order to obtain the language of the site
+     *
+     * @return string the current language of the site
+     */
+    static public function getLang() {
+        return self::$locale;
+    }
+
+    /**
      * Returns the text corresponding to the $key passed translated to the active language
      *
      * @param string $key

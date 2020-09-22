@@ -86,7 +86,10 @@ if ($kit->getStatus() == KitInfo::STATUS_NOT_USED) {
 
             /* The Kit status is: not used */
             ?>
-        	<button class="btn btn-success text-center btn-block btn-lg" onclick="window.location.href='prescription.php'"><?php
+        	<button class="btn btn-success text-center btn-block btn-lg" onclick="window.location.href='prescription.php?culture=<?php
+
+            echo (Localization::getLang());
+            ?>'"><?php
 
             echo (Localization::translate('KitInfo.Button.Continue'));
             ?>	</button>            
