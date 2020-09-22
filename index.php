@@ -17,7 +17,8 @@ if ($dbConnResult !== true) {
     if ($kit = KitInfo::getInstance($_GET['id'])) {
         /* If the kit has been called to be discarded, we set and update its values before showing, if not, the kit will remain the same */
         if (isset($_GET['discard'])) {
-            $kit->changeStatus(KitInfo::STATUS_DISCARDED);
+            // Disable the functionality at the moment
+            // $kit->changeStatus(KitInfo::STATUS_DISCARDED);
         }
 
         switch ($kit->getStatus()) {

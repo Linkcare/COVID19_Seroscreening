@@ -110,14 +110,20 @@ if ($kit->getStatus() == KitInfo::STATUS_NOT_USED) {
         }
         ?>
         
-            <button class="btn btn-primary text-center btn-block btn-lg" onclick="window.location.href='http://seroscreening.com';"><?php
+            <button class="btn btn-primary text-center btn-block btn-lg" onclick="window.location.href='<?php
+
+            echo ($GLOBALS['CLOSE_URL']);
+            ?>';"><?php
 
             echo (Localization::translate('KitInfo.Button.Close'));
             ?>	
             </button>
         
         <?php
-        if ($kit->getStatus() == KitInfo::STATUS_NOT_USED || $kit->getStatus() == KitInfo::STATUS_ASSIGNED) {
+        if (false) {
+            // The discard button will be hidden at the moment, the correct if would be the following:
+            // if ($kit->getStatus() == KitInfo::STATUS_NOT_USED || $kit->getStatus() == KitInfo::STATUS_ASSIGNED) {
+
             /* The Kit is valid, meaning it can be discarded */
             ?> 
             

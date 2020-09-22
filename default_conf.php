@@ -13,6 +13,7 @@ require_once "classes/LC2Action.php";
 
 $GLOBALS['COMMIT'] = true;
 $GLOBALS["DBConnection_URI"] = "oci://covid_kits:xxxxxx@dbproduction.linkcareapp.com:1521/linkcare";
+$GLOBALS["CLOSE_URL"] = "https://seroscreening.com";
 
 $GLOBALS["LANG"] = "EN";
 $GLOBALS["DEFAULT_TIMEZONE"] = "Europe/Madrid";

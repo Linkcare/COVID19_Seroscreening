@@ -56,8 +56,10 @@
 	$(document).ready(function() {
 	    var $submit = $("#btnSubmit");
 	    $submit.prop('disabled', true);
+	    
 	    $("#idInput").on('input change', function() {
 	        $submit.prop('disabled', !$(this).val().length);
+	        $("#idInput").css( "background-color", "" );
     	});
 	});
 </script>
@@ -89,6 +91,7 @@
     function setResult(label, submitButton, result) {
         label.value = result; 
         submitButton.disabled = false; 
+        $("#idInput").css( "background-color", "#D1E9FF" );
 
         //Once a result has been scanned, stop the scanner and hide the camera div
         cameraStop();                   
