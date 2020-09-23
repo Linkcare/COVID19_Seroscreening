@@ -188,7 +188,7 @@ function createNewAdmission($kitInfo, $subscriptionId) {
 
     try {
         createKitInfoTask($admissionId, $kitInfo);
-        list($taskId, $formId) = createRegisterKitTask($admissionId, ($studyRef !== null ? 2 : 1));
+        list($taskId, $formId) = createRegisterKitTask($admissionId);
         $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_FORM);
         $lc2Action->setTaskId($taskId);
         $lc2Action->setFormId($formId);
@@ -211,6 +211,8 @@ function createNewAdmission($kitInfo, $subscriptionId) {
 }
 
 /**
+ * Updates the ADMISSION adding a new "SCAN_KIT" TASK to inform the system that a new KIT has been scanned.
+ * Returns a LC2Action to redirect LC2 to the "KIT_RESULTS" TASK
  *
  * @param APIAdmission $admission
  * @param KitInfo $kitInfo
@@ -224,47 +226,36 @@ function updateAdmission($admission, $kitInfo) {
     $lc2Action->setCaseId($admission->getCaseId());
 
     $tasks = $api->case_get_task_list($admission->getCaseId(), null, null, '{"admission" : "' . $admission->getId() . '"}');
-    $registerKitTask = null;
+    $kitResultsTask = null;
     foreach ($tasks as $t) {
-        if ($t->getTaskCode() == $GLOBALS["TASK_CODES"]["REGISTER_KIT"] && $t->getStatus() != "DONE") {
+        if ($t->getTaskCode() == $GLOBALS["TASK_CODES"]["KIT_RESULTS"]) {
             // There exists an open REGISTER KIT TASK
-            $registerKitTask = $t;
+            $kitResultsTask = $t;
             break;
         }
     }
 
-    $registerStatus = ($admission->getStatus() == APIAdmission::STATUS_INCOMPLETE) ? 2 : 3;
-
-    if (!$registerKitTask) {
-        // Create a new REGISTER KIT TASK
-        list($taskId, $formId) = createRegisterKitTask($admission->getId(), $registerStatus);
-        $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_FORM);
-        $lc2Action->setTaskId($taskId);
-        $lc2Action->setFormId($formId);
-    } else {
-        /*
-         * The REGISTER KIT TASK already exists and it is OPEN. Redirect to the FORM if possible, or to the TASK if the FORM is not found
-         */
+    // Create a new "SCAN KIT" TASK
+    createScanKitTask($admission->getId());
+    if ($kitResultsTask) {
         $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_TASK);
-        $lc2Action->setTaskId($registerKitTask->getId());
-        foreach ($registerKitTask->getForms() as $f) {
-            if ($f->getFormCode() == $GLOBALS["FORM_CODES"]["REGISTER_KIT"]) {
-                $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_FORM);
-                $lc2Action->setFormId($f->getId());
-                break;
-            }
-        }
+        $lc2Action->setTaskId($kitResultsTask->getId());
+    } else {
+        // The "KIT_RESULTS" TASK was not found, so we will ask LC2 to redirect to the CASE
+        $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_CASE);
     }
 
     return $lc2Action;
 }
 
 /**
- * Inserts in an ADMISSION the TASK with Kit Information
+ * Inserts a "KIT_INFO" TASK in the ADMISSION and fills its questions with Kit Information
+ * Return the ID of the inserted TASK
  *
  * @param int $admissionId
  * @param KitInfo $kitInfo
- * @return int
+ * @throws APIException
+ * @return string
  */
 function createKitInfoTask($admissionId, $kitInfo) {
     $api = LinkcareSoapAPI::getInstance();
@@ -276,7 +267,7 @@ function createKitInfoTask($admissionId, $kitInfo) {
 
     $task = $api->task_get($taskId);
     if ($api->errorCode()) {
-        // An unexpected error happened while creating the TASK
+        // An unexpected error happened while getting TASK information
         throw new APIException($api->errorCode(), $api->errorMessage());
     }
 
@@ -340,7 +331,17 @@ function createKitInfoTask($admissionId, $kitInfo) {
     return $taskId;
 }
 
-function createRegisterKitTask($admissionId, $registerStatus) {
+/**
+ * Inserts a new "REGISTER_KIT" TASK in the ADMISSION
+ * Returns an array with 2 elements:
+ * 1- The ID of the inserted TASK
+ * 2- The ID of the "REGISTER_KIT" FORM (the TASK contains more FORMs, and we want to redirect to this specific FORM)
+ *
+ * @param string $admissionId
+ * @throws APIException
+ * @return string[]
+ */
+function createRegisterKitTask($admissionId) {
     $api = LinkcareSoapAPI::getInstance();
     $taskId = $api->task_insert_by_task_code($admissionId, $GLOBALS["TASK_CODES"]["REGISTER_KIT"]);
     if ($api->errorCode() || !$taskId) {
@@ -365,17 +366,36 @@ function createRegisterKitTask($admissionId, $registerStatus) {
         }
     }
 
-    if ($targetForm) {
-        $api->form_set_answer($targetForm->getId(), $GLOBALS["REGISTER_KIT_Q_ID"]["REGISTER_STATUS"], $registerStatus);
-        if ($api->errorCode()) {
-            // An unexpected error happened while obtaining the list of activities
-            throw new APIException($api->errorCode(), $api->errorMessage());
-        }
-    } else {
-        throw new APIException("FORM NOT FOUND", "REGISTER KIT FORM NOT FOUND: (" . $GLOBALS["FORM_CODES"]["REGISTER_KIT"] . ")");
+    return [$taskId, $targetForm ? $targetForm->getId() : null];
+}
+
+/**
+ * Inserts a new "SCAN_KIT" TASK in the ADMISSION and assigns it to role "SERVICE"
+ *
+ * @param string $admissionId
+ * @throws APIException
+ * @return string
+ */
+function createScanKitTask($admissionId) {
+    $api = LinkcareSoapAPI::getInstance();
+    $taskId = $api->task_insert_by_task_code($admissionId, $GLOBALS["TASK_CODES"]["SCAN_KIT"]);
+    if ($api->errorCode() || !$taskId) {
+        // An unexpected error happened while creating the TASK
+        throw new APIException($api->errorCode(), $api->errorMessage());
     }
 
-    return [$taskId, $targetForm ? $targetForm->getId() : null];
+    $task = $api->task_get($taskId);
+    if ($api->errorCode()) {
+        // An unexpected error happened while getting TASK information
+        throw new APIException($api->errorCode(), $api->errorMessage());
+    }
+
+    $task->clearAssignments();
+    $a = new APITaskAssignment(APITaskAssignment::SERVICE, null, null);
+    $task->addAssignments($a);
+    $api->task_set($task);
+
+    return $taskId;
 }
 
 /**

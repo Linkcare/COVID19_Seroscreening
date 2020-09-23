@@ -8,8 +8,11 @@ $errorInfo = $GLOBALS["VIEW_MODEL"];
         
         	<p class="mt-4 border border-secondary rounded text-center">
         		<?php
-
-        echo (Localization::translateError($errorInfo->getErrorCode()));
+        if ($errorInfo->getErrorCode() == ErrorInfo::INVALID_KIT) {
+            echo (Localization::translateError($errorInfo->getErrorCode()) . ': <span style="color:red;">' . $_GET["id"] . '</span>');
+        } else {
+            echo (Localization::translateError($errorInfo->getErrorCode()));
+        }
         ?>
         	</p>
         	
