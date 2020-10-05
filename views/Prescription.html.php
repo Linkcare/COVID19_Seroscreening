@@ -8,7 +8,7 @@
         <div class="container col-lg-4 col-md-8">
         <br>
         	<p>
-        	<a href="/index.php?id=<?php
+        	<a href="./index.php?id=<?php
         echo ($kit->getId() . "&culture=" . Localization::getLang());
         ?>"><i class="btn fa fa-arrow-left" aria-hidden="true"></i></a>
         	</p>
