@@ -29,7 +29,7 @@
         	<input id="btnSubmit" class="btn btn-success text-center btn-block btn-lg" target_url="<?php
         echo ($kit->getInstance_url())?>" value="<?php
 
-        echo (Localization::translate('KitInfo.Button.Proceed'));
+        echo (Localization::translate('KitInfo.Button.Register'));
         ?>">     
         	<br>
         	
