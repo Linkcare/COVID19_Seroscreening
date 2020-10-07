@@ -17,8 +17,7 @@ if ($kit->getStatus() == KitInfo::STATUS_NOT_USED) {
 	
         <p class="mt-4 border border-secondary rounded text-center">
         	<?php
-
-        echo (Localization::translate('KitInfo.Title.InfoFromKitId') . ' ' . $kit->getId());
+        echo (Localization::translate('KitInfo.Title.InfoFromKitId', ['kit_id' => $kit->getId()]));
         ?>
         </p>
     			

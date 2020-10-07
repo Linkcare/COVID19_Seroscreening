@@ -34,8 +34,15 @@ class Localization {
      * @param string $key
      * @return string
      */
-    static public function translate($key) {
-        return self::searchDescription('Web', $key);
+    static public function translate($key, $replacements = null) {
+        $description = self::searchDescription('Web', $key);
+        if (!empty($replacements)) {
+            foreach ($replacements as $key => $value) {
+                $description = str_replace("{{" . $key . "}}", $value, $description);
+            }
+        }
+
+        return $description;
     }
 
     /**
