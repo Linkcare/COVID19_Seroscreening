@@ -161,7 +161,7 @@ function createNewAdmission($kitInfo, $subscriptionId) {
     if ($kitInfo->getPrescriptionId()) {
         $studyRef = new APIIdentifier('PRESCRIPTION_REF', $kitInfo->getPrescriptionId());
         $contactInfo->addIdentifier($studyRef);
-        $contactInfo->setName($kitInfo->getPrescriptionId());
+        // $contactInfo->setName($kitInfo->getPrescriptionId());
     }
 
     // Create a new CASE with incomplete data (only the KIT_ID)
