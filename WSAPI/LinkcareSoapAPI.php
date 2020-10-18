@@ -108,19 +108,20 @@ class LinkcareSoapAPI {
      * @param string $date
      * @param int $team
      * @param boolean $allow_incomplete
+     * @param APIAdmission
      */
     function admission_create($caseId, $subscriptionId, $date, $team = null, $allowIncomplete = false) {
-        $admissionId = null;
+        $admission = null;
         $params = ["case" => $caseId, "subscription" => $subscriptionId, "date" => $date, "team" => $team,
                 "allow_incomplete" => $allowIncomplete ? "1" : ""];
         $resp = $this->invoke('admission_create', $params);
         if (!$resp->getErrorCode()) {
             if ($result = simplexml_load_string($resp->getResult())) {
-                $admissionId = NullableInt($result->ref);
+                $admission = APIAdmission::parseXML($result);
             }
         }
 
-        return $admissionId;
+        return $admission;
     }
 
     /**
@@ -246,6 +247,21 @@ class LinkcareSoapAPI {
         }
 
         return $contact;
+    }
+
+    /**
+     *
+     * @param string $caseId
+     * @param APIContact $contact
+     * @param string $admissionId
+     */
+    public function case_set_contact($caseId, $contact, $admissionId = null) {
+        $xml = new XMLHelper('contact');
+
+        $contact->setId($caseId);
+        $contact->toXML($xml, $xml->rootNode);
+        $params = ["case" => $xml->toString(), "admission" => $admissionId];
+        $resp = $this->invoke('case_set_contact', $params);
     }
 
     /**

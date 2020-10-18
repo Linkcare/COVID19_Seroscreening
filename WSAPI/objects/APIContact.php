@@ -234,6 +234,14 @@ class APIContact {
      *
      * @param string $value
      */
+    public function setId($value) {
+        $this->id = $value;
+    }
+
+    /**
+     *
+     * @param string $value
+     */
     public function setUsername($value) {
         $this->userName = $value;
     }

@@ -4,6 +4,7 @@
 require_once ("default_conf.php");
 
 setSystemTimeZone();
+const PATIENT_IDENTIFIER = 'PARTICIPANT_REF';
 
 /**
  *
@@ -54,34 +55,55 @@ function processKit($kitInfo) {
     $subscriptionId = findSubscription();
 
     // Find out if there exists a patient assigned to the Kit ID
-    /* @var APIResponse $result */
-    $cases = $api->case_search("SEROSCREENING:" . $kitInfo->getId() . "");
-
+    $casesByDevice = $api->case_search("SEROSCREENING:" . $kitInfo->getId() . "");
     if ($api->errorCode()) {
         throw new APIException($api->errorCode(), $api->errorMessage());
     }
 
     $caseId = null;
-    if (!empty($cases)) {
-        $caseId = $cases[0]->getId();
-    }
-
-    if (!$caseId) {
-        // The KIT ID is new. Create a new ADMISSION
-        $lc2Action = createNewAdmission($kitInfo, $subscriptionId);
-    } else {
+    if (!empty($casesByDevice)) {
+        /* We have found an existing patient for the KIT ID */
+        $caseId = $casesByDevice[0]->getId();
         if ($kitInfo->getPrescriptionId()) {
-            // A PRESCRIPTION_REF has been provided, so we must ensure that the CASE found has the indicated PRESCRIPTION_REF
+            // A PARTICIPANT_REF has been provided, so we must ensure that the CASE found has the indicated PARTICIPANT_REF
             $caseContact = $api->case_get_contact($caseId, $subscriptionId);
-            $studyRef = $caseContact->findIdentifier("PRESCRIPTION_REF");
+            $studyRef = $caseContact->findIdentifier("PARTICIPANT_REF");
             if ($studyRef && $studyRef->getValue() != $kitInfo->getPrescriptionId()) {
                 /*
-                 * ERROR: the STUDY REF provided is different than the one assigned to the CASE. This means that we are scanning that the KitID was
+                 * ERROR: the PARTICIPANT_REF provided is different than the one assigned to the CASE. This means that we are scanning that the KitID
+                 * was
                  * previously used for another CASE
                  */
                 throw new KitException(ErrorInfo::KIT_ALREADY_USED);
             }
         }
+    }
+
+    if (!$caseId && $kitInfo->getPrescriptionId()) {
+        /*
+         * We did not find a CASE from the KIT ID, which means that it is necessary to create a new ADMISSION, but maybe a CASE already exists for the
+         * PRESCRIPTION_REF, in which case it is not necessary to create a new CASE, but use the existing one
+         */
+        $casesByPrescription = null;
+        if ($kitInfo->getPrescriptionId()) {
+            $searchCondition = new StdClass();
+            $searchCondition->identifier = new StdClass();
+            $searchCondition->identifier->code = PATIENT_IDENTIFIER;
+            $searchCondition->identifier->value = $kitInfo->getPrescriptionId();
+            $casesByPrescription = $api->case_search(json_encode($searchCondition));
+            if ($api->errorCode()) {
+                throw new APIException($api->errorCode(), $api->errorMessage());
+            }
+        }
+        if (!empty($casesByPrescription)) {
+            $caseId = $casesByPrescription[0]->getId();
+        }
+    }
+
+    if (!$caseId || empty($casesByDevice)) {
+        // The KIT ID is new. Create a new ADMISSION
+        $lc2Action = createNewAdmission($kitInfo, $caseId, $subscriptionId);
+    } else {
         // Find the active ADMISSION for the CASE found
         $admissions = $api->case_admission_list($caseId, true, $subscriptionId);
         if ($api->errorCode()) {
@@ -147,48 +169,69 @@ function findSubscription() {
  * @param int $subscriptionId
  * @return LC2Action
  */
-function createNewAdmission($kitInfo, $subscriptionId) {
+function createNewAdmission($kitInfo, $caseId, $subscriptionId) {
     $lc2Action = new LC2Action();
     $api = LinkcareSoapAPI::getInstance();
+    $isNewCase = false;
 
-    // Create the case
-    $contactInfo = new APIContact();
+    if (!$caseId) {
+        $isNewCase = true;
+        // Create the case
+        $contactInfo = new APIContact();
 
-    $device = new APIContactChannel();
-    $device->setValue("SEROSCREENING:" . $kitInfo->getId());
-    $contactInfo->addDevice($device);
+        $device = new APIContactChannel();
+        $device->setValue("SEROSCREENING:" . $kitInfo->getId());
+        $contactInfo->addDevice($device);
 
-    if ($kitInfo->getPrescriptionId()) {
-        $studyRef = new APIIdentifier('PRESCRIPTION_REF', $kitInfo->getPrescriptionId());
-        $contactInfo->addIdentifier($studyRef);
-        // $contactInfo->setName($kitInfo->getPrescriptionId());
+        if ($kitInfo->getPrescriptionId()) {
+            $studyRef = new APIIdentifier(PATIENT_IDENTIFIER, $kitInfo->getPrescriptionId());
+            $contactInfo->addIdentifier($studyRef);
+            // $contactInfo->setName($kitInfo->getPrescriptionId());
+        }
+
+        // Create a new CASE with incomplete data (only the KIT_ID)
+        $caseId = $api->case_insert($contactInfo, $subscriptionId, true);
+
+        if ($api->errorCode()) {
+            $lc2Action->setActionType(LC2Action::ACTION_ERROR_MSG);
+            $lc2Action->setErrorMessage($api->errorMessage());
+            return $lc2Action;
+        }
     }
 
-    // Create a new CASE with incomplete data (only the KIT_ID)
-    $caseId = $api->case_insert($contactInfo, $subscriptionId, true);
     $lc2Action->setCaseId($caseId);
-
-    if ($api->errorCode()) {
-        $lc2Action->setActionType(LC2Action::ACTION_ERROR_MSG);
-        $lc2Action->setErrorMessage($api->errorMessage());
-        return $lc2Action;
-    }
-
     $failed = false;
     // Create an ADMISSION
-    $admissionId = $api->admission_create($caseId, $subscriptionId, null, null, true);
-    $lc2Action->setAdmissionId($admissionId);
+    $admission = $api->admission_create($caseId, $subscriptionId, null, null, true);
 
-    if ($api->errorCode()) {
+    if (!$admission || $api->errorCode()) {
         // An unexpected error happened while creating the ADMISSION: Delete the CASE
         $failed = true;
         $lc2Action->setActionType(LC2Action::ACTION_ERROR_MSG);
         $lc2Action->setErrorMessage($api->errorMessage());
     }
 
+    $lc2Action->setAdmissionId($admission->getId());
+    if (!$admission->isNew()) {
+        // There already exists an active Admission for the patient. Cannot create a new Admission
+        $lc2Action->setActionType(LC2Action::ACTION_ERROR_MSG);
+        $lc2Action->setErrorMessage(Localization::translate('Admission.already_active', ['kit_id' => $kit->getId()]));
+        return $lc2Action;
+    }
+
+    if (!$isNewCase) {
+        // The CASE already existed, but we need to add the KIT_ID to his list of devices
+        $contactInfo = new APIContact();
+
+        $device = new APIContactChannel();
+        $device->setValue("SEROSCREENING:" . $kitInfo->getId());
+        $contactInfo->addDevice($device);
+        $api->case_set_contact($caseId, $contactInfo);
+    }
+
     try {
-        createKitInfoTask($admissionId, $kitInfo);
-        list($taskId, $formId) = createRegisterKitTask($admissionId);
+        createKitInfoTask($admission->getId(), $kitInfo);
+        list($taskId, $formId) = createRegisterKitTask($admission->getId());
         $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_FORM);
         $lc2Action->setTaskId($taskId);
         $lc2Action->setFormId($formId);
@@ -199,10 +242,12 @@ function createNewAdmission($kitInfo, $subscriptionId) {
     }
 
     if ($failed) {
-        if ($admissionId) {
-            $api->admission_delete($admissionId);
+        if ($admission) {
+            $api->admission_delete($admission->getId());
         }
-        $api->case_delete($caseId, "DELETE");
+        if ($isNewCase) {
+            $api->case_delete($caseId, "DELETE");
+        }
     } else {
         updateKitStatus($kitInfo->getId(), KitInfo::STATUS_ASSIGNED);
     }

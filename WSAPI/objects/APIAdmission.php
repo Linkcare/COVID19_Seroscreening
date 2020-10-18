@@ -22,6 +22,7 @@ class APIAdmission {
     private $dateToDisplay;
     private $ageToDisplay;
     private $subscription;
+    private $isNewAdmission = false;
 
     /**
      *
@@ -34,6 +35,7 @@ class APIAdmission {
         }
         $admission = new APIAdmission();
         $admission->id = (string) $xmlNode->ref;
+        $admission->isNewAdmission = $xmlNode->type != "EXIST";
         if ($xmlNode->data) {
             if ($xmlNode->data->case) {
                 $admission->caseId = NullableString($xmlNode->data->case->ref);
@@ -65,6 +67,19 @@ class APIAdmission {
      */
     public function getId() {
         return $this->id;
+    }
+
+    /**
+     * This function can be used on the Admission object returned by a call to the API function admission_create().
+     * The return value can be:
+     * - true: A new Admission has been created
+     * - false: admission_create() did not create a new Admission because there was already an active Admission for the subscription (Program + Team)
+     * indicated
+     *
+     * @return boolean
+     */
+    public function isNew() {
+        return $this->isNewAdmission;
     }
 
     /**
