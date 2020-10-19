@@ -93,9 +93,11 @@ class Localization {
                 LEFT JOIN DESCRIPTIONS d ON dt.ID_DESCRIPTION = d.ID_DESCRIPTION
                 WHERE d.DESCRIPTION_GROUP = :descGroup AND dt.ISO2_LANGUAGE IN (:lang, 'en') AND d.DESCRIPTION_KEY = :key
                 ORDER BY CASE WHEN dt.ISO2_LANGUAGE = :lang THEN 0 ELSE 1 END";
-        $result = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
+        if (Database::getInstance()) {
+            $result = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
+        }
 
-        if ($result->Next()) {
+        if ($result && $result->Next()) {
             return $result->GetField('DESCRIPTION');
         } else {
             return $key;

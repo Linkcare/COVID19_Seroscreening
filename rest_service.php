@@ -15,6 +15,19 @@ const PATIENT_IDENTIFIER = 'PARTICIPANT_REF';
 function service_dispatch_kit($token = null, $kitInfo) {
     $timezone = "0";
 
+    if (!$GLOBALS["OMIT_DB_CONNECTION"]) {
+        try {
+            $dbConnResult = Database::init($GLOBALS["DBConnection_URI"]);
+            if ($dbConnResult !== true) {
+                $lc2Action = new LC2Action(LC2Action::ACTION_ERROR_MSG);
+                $lc2Action->setErrorMessage("Error connecting to DB");
+                service_log("ERROR: Cannot connect to DB");
+            }
+        } catch (Exception $e) {
+            service_log("ERROR: Cannot initialize DB: " . $e->getMessage());
+        }
+    }
+
     if (!preg_match('/^(\w{5,7})$/', $kitInfo->getId())) {
         $error = new ErrorInfo(ErrorInfo::INVALID_KIT);
         $lc2Action = new LC2Action(LC2Action::ACTION_ERROR_MSG);
@@ -215,7 +228,7 @@ function createNewAdmission($kitInfo, $caseId, $subscriptionId) {
     if (!$admission->isNew()) {
         // There already exists an active Admission for the patient. Cannot create a new Admission
         $lc2Action->setActionType(LC2Action::ACTION_ERROR_MSG);
-        $lc2Action->setErrorMessage(Localization::translate('Admission.already_active', ['kit_id' => $kit->getId()]));
+        $lc2Action->setErrorMessage(Localization::translate('Admission.AlreadyActive', ['kit_id' => $kitInfo->getId()]));
         return $lc2Action;
     }
 
