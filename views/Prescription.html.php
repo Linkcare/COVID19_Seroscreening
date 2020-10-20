@@ -49,7 +49,7 @@
 	/* The submit button will be started dinamically and the prescription_id added from the input */
 	$("#btnSubmit").click(function (e) {
 		var $kitId = $(this).attr("target_url");
-		window.location.href = $kitId + "&prescription_id=" + $("#idInput").val();
+		window.location.href = $kitId + "&prescription_id=" + encodeURIComponent($("#idInput").val());
 	});
 
 	/* Disable and enable of the submit button according to the text input, if it's empty disable it */

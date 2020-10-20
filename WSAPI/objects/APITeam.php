@@ -4,7 +4,7 @@ class APITeam {
     private $id;
     private $code;
     private $name;
-    private $unit;
+    private $type;
 
     /**
      *
@@ -16,10 +16,13 @@ class APITeam {
             return null;
         }
         $team = new APITeam();
-        $team->id = (string) $xmlNode->ref;
-        $team->code = (string) $xmlNode->code;
-        $team->name = (string) $xmlNode->name;
-        $team->unit = (string) $xmlNode->unit;
+        $team->id = NullableString($xmlNode->ref);
+        $team->code = NullableString($xmlNode->code);
+        if (!$team->code) {
+            $team->code = NullableString($xmlNode->team_code);
+        }
+        $team->name = NullableString($xmlNode->name);
+        $team->type = NullableString($xmlNode->unit);
         return $team;
     }
 
@@ -57,7 +60,7 @@ class APITeam {
      *
      * @return string
      */
-    public function getUnit() {
-        return $this->unit;
+    public function getType() {
+        return $this->type;
     }
 }

@@ -6,6 +6,9 @@ class ErrorInfo {
     const INVALID_KIT = "INVALID_KIT";
     const INVALID_STATUS = "INVALID_STATUS";
     const KIT_ALREADY_USED = "KIT_ALREADY_USED";
+    const MAX_ROUNDS_EXCEEDED = "MAX_ROUNDS_EXCEEDED";
+    const PRESCRIPTION_EXPIRED = "PRESCRIPTION_EXPIRED";
+    const PRESCRIPTION_MISSING = "PRESCRIPTION_MISSING";
 
     /* Private members */
     private $errorCode;

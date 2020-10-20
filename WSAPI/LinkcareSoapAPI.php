@@ -83,6 +83,71 @@ class LinkcareSoapAPI {
     }
 
     /**
+     * Sets the active TEAM for the session
+     *
+     * @param string $teamId
+     */
+    public function session_set_team($teamId) {
+        $params = ["team" => $teamId];
+        $resp = $this->invoke('session_set_team', $params);
+        if (!$resp->getErrorCode()) {
+            $this->session->setTeamId($teamId);
+        }
+    }
+
+    /**
+     * Sets the active ROLE for the session
+     *
+     * @param string $roleId
+     */
+    public function session_role($roleId) {
+        $params = ["role" => $roleId];
+        $resp = $this->invoke('session_role', $params);
+        if (!$resp->getErrorCode()) {
+            $this->session->setRoleId($roleId);
+        }
+    }
+
+    /**
+     * Get information about a PROGRAM
+     *
+     * @param string $programId
+     * @param string $subscriptionId
+     * @return APIProgram
+     */
+    public function program_get($programId, $subscriptionId = null) {
+        $program = null;
+        $params = ["program_id" => $programId, "subscription" => $subscriptionId];
+        $resp = $this->invoke('program_get', $params);
+        if (!$resp->getErrorCode()) {
+            if ($found = simplexml_load_string($resp->getResult())) {
+                $program = APIProgram::parseXML($found);
+            }
+        }
+
+        return $program;
+    }
+
+    /**
+     * Get information about a TEAM
+     *
+     * @param string $teamId
+     * @return APITeam
+     */
+    public function team_get($teamId) {
+        $team = null;
+        $params = ["team" => $teamId];
+        $resp = $this->invoke('team_get', $params);
+        if (!$resp->getErrorCode()) {
+            if ($found = simplexml_load_string($resp->getResult())) {
+                $team = APITeam::parseXML($found->data);
+            }
+        }
+
+        return $team;
+    }
+
+    /**
      *
      * @param string[] $filter Associative array with filter options. The key of each item is the name of the filter
      * @return APISubscription[]
@@ -300,9 +365,9 @@ class LinkcareSoapAPI {
      * @param int $subscriptionId
      * @return APIAdmission[]
      */
-    public function case_admission_list($caseId, $get = false, $subscriptionId = null) {
+    public function case_admission_list($caseId, $get = false, $subscriptionId = null, $search) {
         $admissionList = [];
-        $params = ["case" => $caseId, "get" => $get ? "1" : "", "subscription" => $subscriptionId];
+        $params = ["case" => $caseId, "get" => $get ? "1" : "", "subscription" => $subscriptionId, "search_str" => $search];
         $resp = $this->invoke('case_admission_list', $params);
         if (!$resp->getErrorCode()) {
             if ($found = simplexml_load_string($resp->getResult())) {

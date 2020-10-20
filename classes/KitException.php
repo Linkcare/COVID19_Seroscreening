@@ -6,6 +6,6 @@ class KitException extends Exception {
 
     public function __construct($errorCode, $errorMessage = null, $previous = null) {
         $this->error = new ErrorInfo($errorCode, $errorMessage);
-        parent::__construct($this->error->getErrorMessage(), null, null);
+        parent::__construct($this->error->getErrorMessage(), null, $previous);
     }
 }

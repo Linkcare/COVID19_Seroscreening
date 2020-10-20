@@ -86,4 +86,26 @@ class APISession {
     public function getCaseId() {
         return $this->caseId;
     }
+
+    /**
+     * Changes the active TEAM.
+     * This function should never be used by a client.
+     * This is a public function only for LinkcareSoapAPI functions after invoking session_set_team()
+     *
+     * @param string $teamId
+     */
+    public function setTeamId($teamId) {
+        $this->teamId = $teamId;
+    }
+
+    /**
+     * Changes the active ROLE.
+     * This function should never be used by a client.
+     * This is a public function only for LinkcareSoapAPI functions after invoking session_role()
+     *
+     * @param string $roleId
+     */
+    public function setRoleId($roleId) {
+        $this->roleId = $roleId;
+    }
 }
