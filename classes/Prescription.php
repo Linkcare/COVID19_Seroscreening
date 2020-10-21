@@ -6,7 +6,7 @@ class Prescription {
     private $expirationDate;
     private $team;
     private $program;
-    private $rounds;
+    private $rounds = 1;
 
     function __construct($str) {
         $parts = explode(';', $str);

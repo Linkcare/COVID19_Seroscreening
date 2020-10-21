@@ -79,18 +79,48 @@ function processKit($kitInfo) {
         /*
          * Find if there exists a patient with the PARTICIPANT_ID
          */
-        $casesByParticipantId = null;
-        $searchCondition = new StdClass();
-        $searchCondition->identifier = new StdClass();
-        $searchCondition->identifier->code = PATIENT_IDENTIFIER;
-        $searchCondition->identifier->value = $prescription->getParticipantId();
-        $casesByParticipantId = $api->case_search(json_encode($searchCondition));
-        if ($api->errorCode()) {
-            throw new APIException($api->errorCode(), $api->errorMessage());
+        $casesByPrescription = [];
+        $casesByParticipant = [];
+        if ($prescription->getParticipantId()) {
+            $searchCondition = new StdClass();
+            $searchCondition->identifier = new StdClass();
+            $searchCondition->identifier->code = PATIENT_IDENTIFIER;
+            $searchCondition->identifier->value = $prescription->getParticipantId();
+            if ($api->errorCode()) {
+                throw new APIException($api->errorCode(), $api->errorMessage());
+            }
+            $casesByParticipant = $api->case_search(json_encode($searchCondition));
         }
-
-        if (!empty($casesByParticipantId)) {
-            $caseId = $casesByParticipantId[0]->getId();
+        if (!empty($casesByParticipant)) {
+            $caseId = $casesByParticipant[0]->getId();
+        }
+        if ($prescription->getId()) {
+            $searchCondition = new StdClass();
+            $searchCondition->subscription = $subscriptionId;
+            $searchCondition->data_code = new StdClass();
+            $searchCondition->data_code->name = 'PRESCRIPTION_ID';
+            $searchCondition->data_code->value = $prescription->getId();
+            $casesByPrescription = $api->case_search(json_encode($searchCondition));
+            if ($api->errorCode()) {
+                throw new APIException($api->errorCode(), $api->errorMessage());
+            }
+            if (!empty($casesByPrescription)) {
+                // Ensure that the PRESCRIPTION ID does not correspond to another CASE
+                $found = false;
+                foreach ($casesByPrescription as $c) {
+                    if ($c->getId() == $caseId) {
+                        $found = true;
+                        break;
+                    }
+                }
+                if (!$found) {
+                    /*
+                     * Error: We have found a CASE by the PRESCRIPTION ID, but it is not the same than the one found by PARTICIPANT_ID. This means
+                     * that the PRESCRIPTION ID was used in another CASE
+                     */
+                    throw new KitException(ErrorInfo::PRESCRIPTION_ALREADY_USED);
+                }
+            }
         }
     }
 
@@ -100,7 +130,7 @@ function processKit($kitInfo) {
         throw new APIException($api->errorCode(), $api->errorMessage());
     }
 
-    if ($prescription && empty($casesByParticipantId) && !empty($casesByDevice)) {
+    if ($prescription && empty($casesByParticipant) && !empty($casesByDevice)) {
         /*
          * If we have the information of the PARTICIPANT but there exists no CASE for him (no ADMISSION created yet), then the CASE found by the KIT
          * ID must be a different participant, what means that the KIT ID has already been used
@@ -129,12 +159,13 @@ function processKit($kitInfo) {
         }
 
         $admissionForKit = count($kitAdmissions) > 0 ? $kitAdmissions[0] : null;
-        if (in_array($admissionForKit->getStatus(), [APIAdmission::STATUS_ACTIVE, APIAdmission::STATUS_ENROLLED, APIAdmission::STATUS_INCOMPLETE])) {
+        if ($admissionForKit &&
+                in_array($admissionForKit->getStatus(), [APIAdmission::STATUS_ACTIVE, APIAdmission::STATUS_ENROLLED, APIAdmission::STATUS_INCOMPLETE])) {
             $activeAdmission = $admissionForKit;
         }
     }
 
-    if ($prescription) {
+    if ($prescription && $prescription->getId()) {
         /*
          * At this point we are sure that the KIT ID is not used, or it is used and corresponds to the participant, but it is alse necessary to check
          * another thing:
@@ -206,7 +237,7 @@ function processKit($kitInfo) {
         $datetime->setTimezone($tz_object);
         $today = $datetime->format('Y\-m\-d');
 
-        if ($prescription && $prescription->getExpirationDate() < $today) {
+        if ($prescription && $prescription->getExpirationDate() && $prescription->getExpirationDate() < $today) {
             throw new KitException(ErrorInfo::PRESCRIPTION_EXPIRED);
         }
 
@@ -275,7 +306,7 @@ function findSubscription($prescription) {
     }
 
     if (!$subscriptionId) {
-        $e = new APIException("SUBSCRIPTION.NOT_FOUND", "No subscription found to create an ADMISSION");
+        $e = new KitException(ErrorInfo::SUBSCRIPTION_NOT_FOUND);
         throw $e;
     }
 
