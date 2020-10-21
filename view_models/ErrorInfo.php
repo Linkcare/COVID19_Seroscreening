@@ -9,6 +9,7 @@ class ErrorInfo {
     const MAX_ROUNDS_EXCEEDED = "MAX_ROUNDS_EXCEEDED";
     const PRESCRIPTION_EXPIRED = "PRESCRIPTION_EXPIRED";
     const PRESCRIPTION_MISSING = "PRESCRIPTION_MISSING";
+    const PRESCRIPTION_WRONG_FORMAT = "PRESCRIPTION_WRONG_FORMAT";
 
     /* Private members */
     private $errorCode;

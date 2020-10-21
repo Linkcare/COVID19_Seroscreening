@@ -53,4 +53,16 @@ class Prescription {
         $day = substr($str, 6, 2);
         return "$year-$month-$day";
     }
+
+    public function toJSON() {
+        $obj = new StdClass();
+        $obj->success = 1;
+        $obj->id = $this->id;
+        $obj->program = $this->program;
+        $obj->team = $this->team;
+        $obj->expirationDate = $this->expirationDate;
+        $obj->participantId = $this->participantId;
+        $obj->rounds = $this->rounds;
+        return json_encode($obj);
+    }
 }
