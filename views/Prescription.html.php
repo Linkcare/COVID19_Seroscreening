@@ -118,38 +118,36 @@
     
     //Function to write the results of the qr scan at a certain label
     function setResult(label, submitButton, result) {
-    	if(result.includes(";")){
-	       	$.post(
-				window.location,
-              	{prescription: result},
-                function(jsonPrescription){
-                    if(jsonPrescription.success == 0) {
-                        $("#prescriptionInfo").hide();
-                        $("#labelInput").show();
-                        $("#prescriptionError").show();
-                    } else{   
-                        // Fill the prescription fields
-                        console.log(jsonPrescription);
-                        $("#prescriptionId").html(jsonPrescription.id);
-                        $("#prescriptionProgram").html(jsonPrescription.program);
-                        $("#prescriptionTeam").html(jsonPrescription.team);
-                        $("#prescriptionParticipantId").html(jsonPrescription.participantId);
-                        $("#prescriptionExpires").html(jsonPrescription.expirationDate);
-                        $("#prescriptionRounds").html(jsonPrescription.rounds);
-                        
-                        $("#prescriptionInfo").show();
-                        
-                        $("#labelInput").hide();
-                        $("#prescriptionError").hide();
+        $.post(
+			window.location,
+            {prescription: result},
+            function(jsonPrescription){
+                if(jsonPrescription.success == 0) {
+                    $("#prescriptionInfo").hide();
+                    $("#labelInput").show();
+                    $("#prescriptionError").show();
+                } else{   
+                    // Fill the prescription fields
+                    console.log(jsonPrescription);
+                    $("#prescriptionId").html(jsonPrescription.id);
+                    $("#prescriptionProgram").html(jsonPrescription.program);
+                    $("#prescriptionTeam").html(jsonPrescription.team);
+                    $("#prescriptionParticipantId").html(jsonPrescription.participantId);
+                    $("#prescriptionExpires").html(jsonPrescription.expirationDate);
+                    $("#prescriptionRounds").html(jsonPrescription.rounds);
+                    
+                    $("#prescriptionInfo").show();
+                     
+                    $("#labelInput").hide();
+                    $("#prescriptionError").hide();
 
-                        label.value = result; 
-                        submitButton.disabled = false; 
-                        $("#labelInput").css( "background-color", "#D1E9FF" );       
- 
-                    }
+                    label.value = result; 
+                    submitButton.disabled = false; 
+                    $("#labelInput").css( "background-color", "#D1E9FF" );       
                 }
-            );      		   	
-	    }
+            }
+        );      		   	
+
         //Once a result has been scanned, stop the scanner and hide the camera div
         cameraStop();             
     }
