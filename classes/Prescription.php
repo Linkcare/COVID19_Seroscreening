@@ -9,17 +9,24 @@ class Prescription {
     private $program;
     private $rounds = 1;
     private $checkDigit = "";
-    private $withCheckDigit = $GLOBALS['QR_WITH_CHECK_DIGIT'];
+    private $withCheckDigit;
 
-    function __construct($str = null) {
+    /**
+     *
+     * @param string $str Semicolon separated string with the information aobut the prescription
+     * @param boolean $allowParticipantId (default = false) If true, the value in $str can be a single value that will be interpreted as the
+     *        ParticipantId
+     */
+    function __construct($str = null, $allowParticipantId = false) {
+        $this->withCheckDigit = $GLOBALS['QR_WITH_CHECK_DIGIT'];
         if (!$str) {
             return;
         }
         $parts = explode(';', $str);
         if (count($parts) == 1) {
             // Old format with only participantId
-            // $this->participantId = $str;
-            $this->valid = false;
+            $this->participantId = $str;
+            $this->valid = $allowParticipantId;
         } else {
             $ix = 0;
             if ($this->withCheckDigit) {
@@ -62,7 +69,10 @@ class Prescription {
     }
 
     function getExpirationDate() {
-        return $this->formatDate($this->expirationDate);
+        if ($this->expirationDate) {
+            return $this->formatDate($this->expirationDate);
+        }
+        return null;
     }
 
     function getParticipantId() {

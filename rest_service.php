@@ -71,7 +71,7 @@ function processKit($kitInfo) {
     $finishedAdmissions = 0;
     $caseId = null;
 
-    $prescription = trim($kitInfo->getPrescriptionId()) != '' ? new Prescription($kitInfo->getPrescriptionId()) : null;
+    $prescription = trim($kitInfo->getPrescriptionId()) != '' ? new Prescription($kitInfo->getPrescriptionId(), true) : null;
 
     if ($prescription) {
         // Find the subscription for the PROGRAM/TEAM provided in the prescription information
@@ -334,7 +334,7 @@ function createNewAdmission($kitInfo, $prescription, $caseId, $subscriptionId) {
         $device->setValue("SEROSCREENING:" . $kitInfo->getId());
         $contactInfo->addDevice($device);
 
-        if ($prescription->getId()) {
+        if ($prescription->getParticipantId()) {
             $studyRef = new APIIdentifier(PATIENT_IDENTIFIER, $prescription->getParticipantId());
             $contactInfo->addIdentifier($studyRef);
         }
