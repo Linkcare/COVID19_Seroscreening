@@ -9,9 +9,9 @@ class Prescription {
     private $program;
     private $rounds = 1;
     private $checkDigit = "";
+    private $withCheckDigit = $GLOBALS['QR_WITH_CHECK_DIGIT'];
 
     function __construct($str = null) {
-        error_log("QR: $str");
         if (!$str) {
             return;
         }
@@ -21,10 +21,12 @@ class Prescription {
             // $this->participantId = $str;
             $this->valid = false;
         } else {
-            // $this->valid = $this->validateCheckDigit($str);
             $ix = 0;
-            // $this->checkDigit = count($parts) > $ix ? $parts[$ix] : nil;
-            // $ix++;
+            if ($this->withCheckDigit) {
+                // The Prescription has a check digit at the begining of the string
+                $this->checkDigit = count($parts) > $ix ? $parts[$ix] : nil;
+                $ix++;
+            }
             $this->id = count($parts) > $ix ? $parts[$ix] : nil;
             $ix++;
             $this->team = count($parts) > $ix ? $parts[$ix] : nil;
@@ -37,6 +39,10 @@ class Prescription {
             $ix++;
             $this->rounds = count($parts) > $ix ? max(intval($parts[$ix]), 1) : 1;
             $this->valid = $this->id && $this->team && $this->program && $this->participantId && $this->expirationDate;
+            if ($this->withCheckDigit) {
+                // Verify the check digit
+                $this->valid = $this->valid && $this->validateCheckDigit($str);
+            }
         }
     }
 
