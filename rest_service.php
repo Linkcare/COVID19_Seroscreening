@@ -431,6 +431,34 @@ function updateAdmission($admission, $kitInfo) {
         }
     }
 
+    if ($kitResultsTask && !$kitResultsTask->getLocked()) {
+        // If the TASK is not locked, store the KIT ID in an ITEM of KIT_RESULTS TASK
+        $forms = $api->task_activity_list($kitResultsTask->getId());
+        if ($api->errorCode()) {
+            // An unexpected error happened while obtaining the list of activities
+            throw new APIException($api->errorCode(), $api->errorMessage());
+        }
+
+        $targetForm = null;
+        foreach ($forms as $form) {
+            if ($form->getFormCode() == $GLOBALS["FORM_CODES"]["KIT_RESULTS"]) {
+                // The KIT_INFO FORM was found => update the questions with Kit Information
+                $targetForm = $form;
+                break;
+            }
+        }
+
+        if ($targetForm) {
+            $api->form_set_answer($targetForm->getId(), $GLOBALS["KIT_RESULTS_Q_ID"]["KIT_ID"], $kitInfo->getId());
+            if ($api->errorCode()) {
+                // An unexpected error happened while obtaining the list of activities
+                throw new APIException($api->errorCode(), $api->errorMessage());
+            }
+        } else {
+            throw new APIException("FORM NOT FOUND", "KIT_RESULTS FORM NOT FOUND: (" . $GLOBALS["FORM_CODES"]["KIT_INFO"] . ")");
+        }
+    }
+
     // Create a new "SCAN KIT" TASK
     createScanKitTask($admission->getId());
     if ($kitResultsTask) {
