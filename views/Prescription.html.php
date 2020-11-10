@@ -13,10 +13,16 @@
         ?>"><i class="btn fa fa-arrow-left" aria-hidden="true"></i></a>
         	</p>
         	<div class="form-group">
-                <label for="id"><b><?php
+        		<h4 style="text-align: center;"><b><?php
+
+        echo (Localization::translate('Prescription.Title'));
+        ?></b></h4>
+        		<br>
+                
+                <label id="label-text" for="labelInput"><?php
 
                 echo (Localization::translate('Prescription.Label'));
-                ?>:</b></label>
+                ?>:</label>
 
                     <div id="prescriptionInfo" style="display: none;">
                   		<ul> 
@@ -44,21 +50,37 @@
             		<input type="text" class="form-control" id="labelInput">
           	</div>
           	
+          	<div id="info-div">
+          		<p><?php
+
+            echo (Localization::translate('Prescription.Info'));
+            ?></p>
+            	<div style="text-align: center;">
+                	<img class="img-fluid mx-auto" style="width: 50%;" src="img/prescription.png">
+                	&nbsp;
+                	<img class="img-fluid mx-auto" style="width: 20%;" src="img/phone-min.png">
+            	</div>
+          	</div>
+          	
           	<div id="prescriptionError" style="color: red; display: none;"><?php
         echo (Localization::translateError(ErrorInfo::PRESCRIPTION_WRONG_FORMAT));
         ?></div>
           	
-          	<br>          	
-        	<div class="text-center">
-        		<button id="start-button" class="btn btn-light mx-auto px-1">
-        			<img id="start-button" class="img-fluid mx-auto" style="width: 60%;" src="img/qr.png">
-    			</button>        		
+          	<br>
+          	<div id="button-div">
+              	<p><?php
+            echo (Localization::translate('Prescription.Scanner.Info'));
+            ?>:</p>
+            	<div class="text-center">
+            		<img id="start-button" class="img-fluid mx-auto" style="width: 30%; cursor: pointer;" src="img/camera.png">      		
+            	</div>
+            	<br><br>
         	</div>
-        	<br>
+        	
         	<input id="btnSubmit" class="btn btn-success text-center btn-block btn-lg" target_url="<?php
         echo ($kit->getInstance_url())?>" value="<?php
 
-        echo (Localization::translate('KitInfo.Button.Register'));
+        echo (Localization::translate('Prescription.Button.Start'));
         ?>">     
         	<br>
         	
@@ -138,12 +160,17 @@
                     
                     $("#prescriptionInfo").show();
                      
+                    //Now that a prescription has been scanned, hide the rest of the page
                     $("#labelInput").hide();
+                    $("#label-text").hide();
+                    $("#info-div").hide();
+                    $("#button-div").hide();
                     $("#prescriptionError").hide();
 
+                    //Write the scanned data into the hidden input label
                     label.value = result; 
-                    submitButton.disabled = false; 
-                    $("#labelInput").css( "background-color", "#D1E9FF" );       
+                    //Enable the start button
+                    submitButton.disabled = false;
                 }
             }
         );      		   	
