@@ -6,18 +6,13 @@
         </div>
         
         <div class="container col-lg-4 col-md-8">
-        <br>
-        	<p>
-        	<a href="./index.php?id=<?php
-        echo ($kit->getId() . "&culture=" . Localization::getLang());
-        ?>"><i class="btn fa fa-arrow-left" aria-hidden="true"></i></a>
+        	<p>    	
+       		 <i id="back-arrow" class="btn fa fa-arrow-left" aria-hidden="true" style="cursor: pointer;"></i>
         	</p>
         	<div class="form-group">
         		<h4 style="text-align: center;"><b><?php
-
         echo (Localization::translate('Prescription.Title'));
         ?></b></h4>
-        		<br>
                 
                 <label id="label-text" for="labelInput"><?php
 
@@ -60,13 +55,8 @@
                 	&nbsp;
                 	<img class="img-fluid mx-auto" style="width: 20%;" src="img/phone-min.png">
             	</div>
-          	</div>
-          	
-          	<div id="prescriptionError" style="color: red; display: none;"><?php
-        echo (Localization::translateError(ErrorInfo::PRESCRIPTION_WRONG_FORMAT));
-        ?></div>
-          	
-          	<br>
+          	</div>          	          
+        	
           	<div id="button-div">
               	<p><?php
             echo (Localization::translate('Prescription.Scanner.Info'));
@@ -74,18 +64,19 @@
             	<div class="text-center">
             		<img id="start-button" class="img-fluid mx-auto" style="width: 30%; cursor: pointer;" src="img/camera.png">      		
             	</div>
-            	<br><br>
+            	
         	</div>
+        	
+        	<!-- div to show any errors at the qr video scanning -->
+        	<p id="cam-errors"></p>
         	
         	<input id="btnSubmit" class="btn btn-success text-center btn-block btn-lg" target_url="<?php
         echo ($kit->getInstance_url())?>" value="<?php
 
         echo (Localization::translate('Prescription.Button.Start'));
         ?>">     
-        	<br>
         	
-        	<!-- div to show any errors at the qr video scanning -->
-        	<p id="cam-errors"></p>
+        	
         </div>  
 	</body>
 </html>
@@ -100,6 +91,27 @@
 	$("#btnSubmit").click(function (e) {
 		var kitId = $(this).attr("target_url");
 		window.location.href = kitId + "&prescription_id=" + encodeURIComponent($("#labelInput").val());
+	});
+
+	$("#back-arrow").click(function (e) {
+		if($("#labelInput").is(":hidden")){
+			//If the labelInput was hidden, then we are showing the scanned prescription information
+			// then we will want to go back to the previous status where we were showing the other fields
+			// and clean the input, while hidding the prescription information
+			$("#labelInput").show();
+            $("#label-text").show();
+            $("#info-div").show();
+            $("#button-div").show();
+
+            $("#prescriptionInfo").hide();
+            $("#labelInput").val("");
+            
+		} else {
+			//Else we want to go back to the index, meaning 
+			window.location.href = "<?php
+echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang());
+?>";
+		}
 	});
 
 	/* Disable and enable of the submit button according to the text input, if it's empty disable it */
@@ -148,6 +160,10 @@
                     $("#prescriptionInfo").hide();
                     $("#labelInput").show();
                     $("#prescriptionError").show();
+                    window.location.href='error.php?error=PRESCRIPTION_WRONG_FORMAT&return=prescription&culture=<?php
+
+                    echo (Localization::getLang());
+                    ?>';
                 } else{   
                     // Fill the prescription fields
                     console.log(jsonPrescription);

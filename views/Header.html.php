@@ -60,11 +60,24 @@ if (isset($_POST["prescription"])) {
             for ($i = 0; $i < sizeof(Localization::SUPPORTED_LOCALES); $i++) {
                 $url = substr($_SERVER['REQUEST_URI'], 0, strpos($_SERVER['REQUEST_URI'], "/?"));
                 $langUrl = Localization::SUPPORTED_LOCALES[$i];
+
                 if ($id = $_GET['id']) {
                     echo ('<li class="nav-item"><a class="nav-link" href="' . $url . '?id=' . $id . '&culture=' . $langUrl . '">' .
                             Localization::translateLanguage($i) . '</a></li>');
                 } else {
-                    echo ('<li class="nav-item"><a class="nav-link" href="' . $url . '?culture=' . $langUrl . '">' .
+                    // If there is no id sent through GET, we might come from Prescription, meaning we should check for other GET fields
+                    if (isset($_GET['error'])) {
+                        $errorGet = "&error=" . $_GET['error'];
+                    } else {
+                        $errorGet = "";
+                    }
+                    if (isset($_GET['return'])) {
+                        $returnGet = "&return=" . $_GET['return'];
+                    } else {
+                        $returnGet = "";
+                    }
+
+                    echo ('<li class="nav-item"><a class="nav-link" href="' . $url . '?culture=' . $langUrl . $errorGet . $returnGet . '">' .
                             Localization::translateLanguage($i) . '</a></li>');
                 }
             }
