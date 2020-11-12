@@ -51,7 +51,7 @@
             echo (Localization::translate('Prescription.Info'));
             ?></p>
             	<div style="text-align: center;">
-                	<img class="img-fluid mx-auto" style="width: 50%;" src="img/prescription.png">
+                	<img class="img-fluid mx-auto" style="width: 55%;" src="img/ePrescription.png">
                 	&nbsp;
                 	<img class="img-fluid mx-auto" style="width: 20%;" src="img/phone-min.png">
             	</div>
@@ -107,7 +107,8 @@
             $("#labelInput").val("");
             
 		} else {
-			//Else we want to go back to the index, meaning 
+			//Else we want to go back to the index, meaning we are showing the fields and no prescription has been scanned
+			// and we just want to go back
 			window.location.href = "<?php
 echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang());
 ?>";
