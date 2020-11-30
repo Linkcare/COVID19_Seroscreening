@@ -70,7 +70,7 @@
         	<!-- div to show any errors at the qr video scanning -->
         	<p id="cam-errors"></p>
         	
-        	<input id="btnSubmit" class="btn btn-success text-center btn-block btn-lg" target_url="<?php
+        	<input id="btnSubmit" type="button" class="btn btn-success text-center btn-block btn-lg" target_url="<?php
         echo ($kit->getInstance_url())?>" value="<?php
 
         echo (Localization::translate('Prescription.Button.Start'));
