@@ -15,7 +15,8 @@ const PATIENT_IDENTIFIER = 'PARTICIPANT_REF';
 function service_dispatch_kit($token = null, $kitInfo) {
     $timezone = "0";
 
-    if (!$GLOBALS["OMIT_DB_CONNECTION"]) {
+    if (!$GLOBALS["KIT_INFO_MGR"]) {
+        // If no url has been provided to access the service that manages del KIT INFO database, then we assume that we have local access to DB
         try {
             $dbConnResult = Database::init($GLOBALS["DBConnection_URI"]);
             if ($dbConnResult !== true) {
@@ -400,7 +401,12 @@ function createNewAdmission($kitInfo, $prescription, $caseId, $subscriptionId) {
             $api->case_delete($caseId, "DELETE");
         }
     } else {
-        updateKitStatus($kitInfo->getId(), KitInfo::STATUS_ASSIGNED);
+        if (!$GLOBALS["KIT_INFO_MGR"]) {
+            // If no url has been provided to access the service that manages del KIT INFO database, then we assume that we have local access to DB
+            $kitInfo->changeStatus(KitInfo::STATUS_ASSIGNED);
+        } else {
+            updateKitStatusRemote($kitInfo->getId(), KitInfo::STATUS_ASSIGNED);
+        }
     }
 
     return $lc2Action;
@@ -423,11 +429,33 @@ function updateAdmission($admission, $kitInfo) {
 
     $tasks = $api->case_get_task_list($admission->getCaseId(), null, null, '{"admission" : "' . $admission->getId() . '"}');
     $kitResultsTask = null;
+    $registerKitTask = null;
     foreach ($tasks as $t) {
         if ($t->getTaskCode() == $GLOBALS["TASK_CODES"]["KIT_RESULTS"]) {
             // There exists an open REGISTER KIT TASK
             $kitResultsTask = $t;
-            break;
+        }
+        if ($t->getTaskCode() == $GLOBALS["TASK_CODES"]["REGISTER_KIT"]) {
+            // There exists an open REGISTER KIT TASK
+            $registerKitTask = $t;
+        }
+    }
+
+    if (!$kitResultsTask && $registerKitTask) {
+        // If KIT_RESULTS TASK does not exist, then redirect to the first open FORM of REGISTER_KIT
+        $forms = $api->task_activity_list($registerKitTask->getId());
+        if ($api->errorCode()) {
+            // An unexpected error happened while obtaining the list of activities
+            throw new APIException($api->errorCode(), $api->errorMessage());
+        }
+
+        $lastForm = null;
+        foreach ($forms as $form) {
+            $lastForm = $form;
+            if ($form->getStatus() == "OPEN") {
+                // An OPEN FORM was found
+                break;
+            }
         }
     }
 
@@ -464,6 +492,10 @@ function updateAdmission($admission, $kitInfo) {
     if ($kitResultsTask) {
         $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_TASK);
         $lc2Action->setTaskId($kitResultsTask->getId());
+    } elseif ($registerKitTask && $lastForm) {
+        $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_FORM);
+        $lc2Action->setTaskId($registerKitTask->getId());
+        $lc2Action->setFormId($lastForm->getId());
     } else {
         // The "KIT_RESULTS" TASK was not found, so we will ask LC2 to redirect to the CASE
         $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_CASE);
@@ -692,13 +724,13 @@ function createScanKitTask($admissionId) {
 }
 
 /**
- * Sends a request to the remote service that manages the Kits to change the status of a Kit
+ * Sends a SOAP request to the remote service that manages the Kits to change the status of a Kit
  *
  * @param string $kitId
  * @param string $status
  */
-function updateKitStatus($kitId, $status) {
-    $endpoint = $GLOBALS["KIT_INFO_LINK"];
+function updateKitStatusRemote($kitId, $status) {
+    $endpoint = $GLOBALS["KIT_INFO_MGR"];
     $uri = parse_url($endpoint)['scheme'] . '://' . parse_url($endpoint)['host'] . ":" . parse_url($endpoint)['port'];
 
     $client = new SoapClient(null, ['location' => $endpoint, 'uri' => $uri, "connection_timeout" => 10]);

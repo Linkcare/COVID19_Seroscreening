@@ -68,7 +68,7 @@
         	</div>
         	
         	<!-- div to show any errors at the qr video scanning -->
-        	<p id="cam-errors"></p>
+        	<p id="cam-errors" style="display: none;"></p>
         	
         	<input id="btnSubmit" type="button" class="btn btn-success text-center btn-block btn-lg" target_url="<?php
         echo ($kit->getInstance_url())?>" value="<?php

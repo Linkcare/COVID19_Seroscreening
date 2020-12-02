@@ -1,9 +1,9 @@
 <?php
 
 class LC2Action {
-    const ACTION_REDIRECT_TO_TASK = "REDIRECT_TO_TASK";
-    const ACTION_REDIRECT_TO_CASE = "REDIRECT_TO_CASE";
-    const ACTION_REDIRECT_TO_FORM = "REDIRECT_TO_FORM";
+    const ACTION_REDIRECT_TO_TASK = "SHOW_TASK";
+    const ACTION_REDIRECT_TO_CASE = "SHOW_CASE_TASK_LIST";
+    const ACTION_REDIRECT_TO_FORM = "SHOW_FORM";
     const ACTION_ERROR_MSG = "ERROR_MSG";
     private $action;
     private $caseId;

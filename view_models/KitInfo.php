@@ -198,8 +198,8 @@ class KitInfo {
      */
     public function generateURLtoLC2() {
         if ($this->getStatus() === KitInfo::STATUS_NOT_USED) {}
-        if (strpos($this->getInstance_url(), '/?') === false) {
-            $urlStart = $this->getInstance_url() . '/?';
+        if (strpos($this->getInstance_url(), '?') === false) {
+            $urlStart = $this->getInstance_url() . '?';
         } else {
             $urlStart = $this->getInstance_url() . '&';
         }
@@ -229,6 +229,10 @@ class KitInfo {
         }
         // If the aim is to set a new status that is not declared, exit the function as well
         if (!in_array($status, self::VALID_STATUS)) {
+            return;
+        }
+
+        if (!Database::getInstance()) {
             return;
         }
 
