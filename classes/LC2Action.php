@@ -71,7 +71,7 @@ class LC2Action {
      */
     public function toString() {
         $action = new stdClass();
-        $action->action = $this->action;
+        $action->action_request = $this->action;
         if ($this->taskId) {
             $action->task_id = $this->taskId;
         }

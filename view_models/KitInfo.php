@@ -15,6 +15,7 @@ class KitInfo {
     private $batch_number;
     private $exp_date;
     private $status;
+    private $programCode;
     private $instance_url;
     private $prescriptionId;
 
@@ -37,6 +38,7 @@ class KitInfo {
                     ki.EXPIRATION,
                     ki.BATCH_NUMBER,
                     ki.STATUS,
+                    ki.PROGRAM_CODE,
                     li.URL
                 FROM
                     KIT_INFO ki
@@ -53,6 +55,7 @@ class KitInfo {
                 $kit->setBatch_number($result->GetField('BATCH_NUMBER'));
                 $kit->setExp_date(substr($result->GetField('EXPIRATION'), 0, 10));
                 $kit->setStatus($result->GetField("STATUS"));
+                $kit->setProgramCode($result->GetField("PROGRAM_CODE"));
                 $kit->setInstance_url($result->GetField('URL'));
             }
         }
@@ -107,6 +110,14 @@ class KitInfo {
      */
     public function getStatus() {
         return $this->status;
+    }
+
+    /**
+     *
+     * @return string
+     */
+    public function getProgramCode() {
+        return $this->programCode;
     }
 
     /**
@@ -177,6 +188,14 @@ class KitInfo {
 
     /**
      *
+     * @param string $programCode
+     */
+    public function setProgramCode($programCode) {
+        $this->programCode = $programCode;
+    }
+
+    /**
+     *
      * @param string $instance_url
      */
     public function setInstance_url($instance_url) {
@@ -209,10 +228,15 @@ class KitInfo {
                 $this->setInstance_url($urlStart . 'kit_id=' . $this->getId());
                 break;
             case KitInfo::STATUS_NOT_USED :
-                $this->setInstance_url(
-                        $urlStart . 'service_name=seroscreening' . '&kit_id=' . $this->getId() . '&manufacture_date=' . $this->getManufacture_date() .
-                        '&manufacture_place=' . $this->getManufacture_place() . '&expiration_date=' . $this->getExp_date() . '&batch_number=' .
-                        $this->getBatch_number());
+
+                $urlStart .= 'service_name=seroscreening';
+                $urlStart .= '&kit_id=' . $this->getId();
+                $urlStart .= '&manufacture_date=' . $this->getManufacture_date();
+                $urlStart .= '&manufacture_place=' . $this->getManufacture_place();
+                $urlStart .= '&expiration_date=' . $this->getExp_date();
+                $urlStart .= '&batch_number=' . $this->getBatch_number();
+                $urlStart .= '&program=' . $this->getProgramCode();
+                $this->setInstance_url($urlStart);
                 break;
         }
     }

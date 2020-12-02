@@ -32,7 +32,7 @@ function service_dispatch_kit($token = null, $kitInfo) {
         }
     }
 
-    if (!preg_match('/^(\w{5,7})$/', $kitInfo->getId())) {
+    if (!preg_match('/^([-_A-Za-z0-9]{5,7})$/', $kitInfo->getId())) {
         $error = new ErrorInfo(ErrorInfo::INVALID_KIT);
         $lc2Action = new LC2Action(LC2Action::ACTION_ERROR_MSG);
         $lc2Action->setErrorMessage($error->getErrorMessage());
@@ -76,7 +76,7 @@ function processKit($kitInfo) {
 
     if ($prescription) {
         // Find the subscription for the PROGRAM/TEAM provided in the prescription information
-        $subscriptionId = findSubscription($prescription);
+        $subscriptionId = findSubscription($prescription, $kitInfo->getProgramCode());
         /*
          * Find if there exists a patient with the PARTICIPANT_ID
          */
@@ -253,15 +253,18 @@ function processKit($kitInfo) {
 }
 
 /**
- * Searches the subscription of the active user that corresponds to the PROGRAM "Seroscreening"
- */
-/**
+ * Searches the appropriate subscription of the active user.
+ * To search the subscription it is necessary to know the PROGRAM CODE, which is obtained from:
+ * - The Prescription contains a PROGRAM_CODE (if not NULL)
+ * - Otherwise the default PROGRAM CODE provided in $defaultProgramCode (if not null)
+ * - Otherwise the PROGRAM CODE defined in the global variable $GLOBALS["PROGRAM_CODE"]
  *
  * @param Prescription $prescription
+ * @param string $defaultProgramCode
  * @throws APIException
  * @return string
  */
-function findSubscription($prescription) {
+function findSubscription($prescription, $defaultProgramCode = null) {
     $api = LinkcareSoapAPI::getInstance();
     $subscriptionId = null;
     $teamId = null;
@@ -292,6 +295,8 @@ function findSubscription($prescription) {
         }
         $programId = $program->getId();
         $programCode = $program->getCode();
+    } elseif ($defaultProgramCode) {
+        $programCode = $defaultProgramCode;
     } else {
         $programCode = $GLOBALS["PROGRAM_CODE"];
     }
