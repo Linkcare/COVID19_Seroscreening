@@ -665,7 +665,7 @@ function createPrescriptionInfoTask($admissionId, $prescription) {
  * Inserts a new "REGISTER_KIT" TASK in the ADMISSION
  * Returns an array with 2 elements:
  * 1- The ID of the inserted TASK
- * 2- The ID of the "REGISTER_KIT" FORM (the TASK contains more FORMs, and we want to redirect to this specific FORM)
+ * 2- The ID of the first open FORM (the TASK contains more FORMs, and we want to redirect to this specific FORM)
  *
  * @param string $admissionId
  * @throws APIException
@@ -689,9 +689,9 @@ function createRegisterKitTask($admissionId) {
     /* @var APIForm $targetForm */
     $targetForm = null;
     foreach ($forms as $form) {
-        if ($form->getFormCode() == $GLOBALS["FORM_CODES"]["REGISTER_KIT"]) {
-            // The KIT_INFO FORM was found => update the questions with Kit Information
-            $targetForm = $api->form_get_summary($form->getId(), true, false);
+        // find the first open FORM of the TASK or the last FORM if all are closed
+        $targetForm = $form;
+        if ($form->getStatus() == "OPEN") {
             break;
         }
     }
@@ -756,6 +756,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $kitInfo->setManufacture_place($_POST["manufacture_place"]);
     $kitInfo->setManufacture_date($_POST["manufacture_date"]);
     $kitInfo->setExp_date($_POST["expiration_date"]);
+    $kitInfo->setProgramCode($_POST["program"]);
     header('Content-type: application/json');
     echo service_dispatch_kit($_POST["token"], $kitInfo);
 }

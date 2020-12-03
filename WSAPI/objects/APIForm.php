@@ -36,10 +36,10 @@ class APIForm {
         } else {
             $form->name = NullableString((string) $formInfoNode->name);
         }
-        $formInfoNode->description = NullableString((string) $formInfoNode->description);
-        $formInfoNode->parentId = NullableInt((string) $formInfoNode->parent_id);
-        $formInfoNode->date = NullableString((string) $formInfoNode->date);
-        $formInfoNode->status = NullableString((string) $formInfoNode->status);
+        $form->description = NullableString((string) $formInfoNode->description);
+        $form->parentId = NullableInt((string) $formInfoNode->parent_id);
+        $form->date = NullableString((string) $formInfoNode->date);
+        $form->status = NullableString((string) $formInfoNode->status);
 
         $questions = [];
         if ($formInfoNode->questions) {
