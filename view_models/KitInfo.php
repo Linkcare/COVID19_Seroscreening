@@ -2,11 +2,15 @@
 
 class KitInfo {
     const STATUS_DISCARDED = "DISCARDED";
-    const STATUS_NOT_USED = "READY";
+    const STATUS_NOT_USED = "NOT_USED";
     const STATUS_ASSIGNED = "ASSIGNED";
     const STATUS_USED = "USED";
     const STATUS_EXPIRED = "EXPIRED";
     const VALID_STATUS = [self::STATUS_DISCARDED, self::STATUS_NOT_USED, self::STATUS_ASSIGNED, self::STATUS_EXPIRED, self::STATUS_USED];
+
+    // Actions on a Kit
+    const ACTION_SCANNED = "SCANNED";
+    const ACTION_PROCESSED = "PROCESSED";
 
     /* Private members */
     private $id;
@@ -109,6 +113,9 @@ class KitInfo {
      * @return string
      */
     public function getStatus() {
+        if ($this->status === null) {
+            return self::STATUS_NOT_USED;
+        }
         return $this->status;
     }
 
@@ -216,19 +223,18 @@ class KitInfo {
      * Function to compose the URL that will be the instance URL of the kit used at the PROCEED button
      */
     public function generateURLtoLC2() {
-        if ($this->getStatus() === KitInfo::STATUS_NOT_USED) {}
-        if (strpos($this->getInstance_url(), '?') === false) {
-            $urlStart = $this->getInstance_url() . '?';
+        $urlStart = '';
+        if (strpos($this->instance_url, '?') === false) {
+            $urlStart = $this->instance_url . '?';
         } else {
-            $urlStart = $this->getInstance_url() . '&';
+            $urlStart = $this->instance_url . '&';
         }
 
         switch ($this->getStatus()) {
             case KitInfo::STATUS_ASSIGNED :
-                $this->setInstance_url($urlStart . 'kit_id=' . $this->getId());
+                $urlStart .= 'kit_id=' . $this->getId();
                 break;
             case KitInfo::STATUS_NOT_USED :
-
                 $urlStart .= 'service_name=seroscreening';
                 $urlStart .= '&kit_id=' . $this->getId();
                 $urlStart .= '&manufacture_date=' . $this->getManufacture_date();
@@ -236,9 +242,10 @@ class KitInfo {
                 $urlStart .= '&expiration_date=' . $this->getExp_date();
                 $urlStart .= '&batch_number=' . $this->getBatch_number();
                 $urlStart .= '&program=' . $this->getProgramCode();
-                $this->setInstance_url($urlStart);
                 break;
         }
+
+        return $urlStart;
     }
 
     /**
@@ -271,5 +278,50 @@ class KitInfo {
 
         // Finally modify the status of the object itself
         $this->setStatus($status);
+    }
+
+    /**
+     * Generates an entry in the table KIT_TRACKING to know who is creating Admissions in Linkcare with a KIT_ID
+     *
+     * @param string $prescriptionId
+     */
+    public function storeTracking($action, $prescriptionId) {
+        $tz_object = new DateTimeZone('UTC');
+        $datetime = new DateTime();
+        $datetime->setTimezone($tz_object);
+        $today = $datetime->format('Y\-m\-d\ H:i:s');
+
+        if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            $ipAddress = $_SERVER['HTTP_X_FORWARDED_FOR'];
+        } else {
+            $ipAddress = $_SERVER['REMOTE_ADDR'];
+        }
+
+        try {
+            $ipdat = @json_decode(file_get_contents("http://www.geoplugin.net/json.gp?ip=" . $ipAddress));
+        } catch (Exception $e) {
+            $ipdat = null;
+        }
+
+        $arrVariables[':id'] = self::getNextTrackingId();
+        $arrVariables[':created'] = $today;
+        $arrVariables[':kitId'] = $this->getId();
+        $arrVariables[':kitStatus'] = $this->getStatus();
+        $arrVariables[':actionType'] = $action;
+        $arrVariables[':prescriptionId'] = $prescriptionId;
+        $arrVariables[':ipAddress'] = $ipAddress;
+        $arrVariables[':targetUrl'] = $this->getInstance_url();
+        $arrVariables[':countryName'] = $ipdat ? $ipdat->geoplugin_countryName : null;
+        $arrVariables[':cityName'] = $ipdat ? $ipdat->geoplugin_city : null;
+        $sql = "INSERT INTO KIT_TRACKING (ID_TRACKING, CREATED, ID_KIT, KIT_STATUS, ACTION_TYPE, ID_PRESCRIPTION, IP, LINKCARE_URL, COUNTRY, CITY) VALUES (:id, :created, :kitId, :kitStatus, :actionType, :prescriptionId, :ipAddress, :targetUrl, :countryName, :cityName)";
+        Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
+    }
+
+    static private function getNextTrackingId() {
+        // if ($GLOBALS["BBDD"] == "ORACLE") {
+        $sql = "SELECT SEQ_TRACKING.NEXTVAL AS NEXTV FROM DUAL";
+        $rst = Database::getInstance()->ExecuteQuery($sql);
+        $rst->Next();
+        return $rst->GetField("NEXTV");
     }
 }

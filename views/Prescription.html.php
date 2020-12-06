@@ -71,7 +71,7 @@
         	<p id="cam-errors" style="display: none;"></p>
         	
         	<input id="btnSubmit" type="button" class="btn btn-success text-center btn-block btn-lg" target_url="<?php
-        echo ($kit->getInstance_url())?>" value="<?php
+        echo ($kit->generateURLtoLC2())?>" value="<?php
 
         echo (Localization::translate('Prescription.Button.Start'));
         ?>">     
@@ -89,8 +89,16 @@
 
 	/* The submit button will be started dinamically and the prescription_id added from the input */
 	$("#btnSubmit").click(function (e) {
-		var kitId = $(this).attr("target_url");
-		window.location.href = kitId + "&prescription_id=" + encodeURIComponent($("#labelInput").val());
+		var prescriptionStr = $("#labelInput").val();
+		//window.location.href = kitId + "&prescription_id=" + encodeURIComponent(prescriptionStr);
+
+        $.post(
+        	'actions.php',,
+            {action: 'create_admission', prescription: prescriptionStr},
+            function(targetUrl){
+                window.location.href = targetUrl;
+            }
+        );      		   	
 	});
 
 	$("#back-arrow").click(function (e) {
@@ -154,8 +162,8 @@ echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang())
     //Function to write the results of the qr scan at a certain label
     function setResult(label, submitButton, result) {
         $.post(
-			window.location,
-            {prescription: result},
+			'actions.php',
+            {action: 'set_prescription', prescription: result},
             function(jsonPrescription){
                 if(jsonPrescription.success == 0) {
                     $("#prescriptionInfo").hide();

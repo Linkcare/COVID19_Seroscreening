@@ -20,7 +20,8 @@ if ($dbConnResult !== true) {
             // Disable the functionality at the moment
             // $kit->changeStatus(KitInfo::STATUS_DISCARDED);
         }
-
+        /* Store a tracking of all kits scanned */
+        $kit->storeTracking(KitInfo::ACTION_SCANNED, '');
         switch ($kit->getStatus()) {
             case '' :
                 $kit->setStatus(KitInfo::STATUS_NOT_USED);

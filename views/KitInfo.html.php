@@ -2,6 +2,7 @@
 
 /* @var KitInfo $kit */
 $kit = $GLOBALS["VIEW_MODEL"];
+$_SESSION["KIT"] = serialize($kit);
 
 if ($kit->getStatus() == KitInfo::STATUS_NOT_USED) {
     $statusClassStyle = "text-success";
@@ -81,14 +82,9 @@ if ($kit->getStatus() == KitInfo::STATUS_NOT_USED) {
 		
         <?php
         if ($kit->getStatus() == KitInfo::STATUS_NOT_USED) {
-            $_SESSION["KIT"] = serialize($kit);
-
             /* The Kit status is: not used */
             ?>
-        	<button class="btn btn-success text-center btn-block btn-lg" onclick="window.location.href='prescription.php?culture=<?php
-
-            echo (Localization::getLang());
-            ?>'"><?php
+        	<button id="btnProcessKit" class="btn btn-success text-center btn-block btn-lg"><?php
 
             echo (Localization::translate('KitInfo.Button.Continue'));
             ?>	</button>            
@@ -97,9 +93,7 @@ if ($kit->getStatus() == KitInfo::STATUS_NOT_USED) {
         } else if ($kit->getStatus() == KitInfo::STATUS_ASSIGNED) {
             /* The Kit status is: assigned */
             ?>  
-        	<button class="btn btn-success text-center btn-block btn-lg" onclick="window.location.href='<?php
-
-            echo ($kit->getInstance_url())?>';"><?php
+        	<button id="btnProcessKit" class="btn btn-success text-center btn-block btn-lg"><?php
 
             echo (Localization::translate('KitInfo.Button.Proceed'));
             ?>	</button>            
@@ -147,6 +141,17 @@ if ($kit->getStatus() == KitInfo::STATUS_NOT_USED) {
         }
         ?>
         
-        </div>	      	
+        </div>
+        <script>
+        	$("#btnProcessKit").click(function (e) {
+                $.post(
+                	'actions.php',
+                    {action: 'process_kit'},
+                    function(targetUrl){
+                        window.location.href = targetUrl;
+                    }
+                );      		   	
+        	});
+        </script>    	
 	</body>
 </html>

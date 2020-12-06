@@ -1,13 +1,3 @@
-<?php
-// Prescription returned as a JSON in case we receive a POST
-if (isset($_POST["prescription"])) {
-    $prescription = new Prescription($_POST["prescription"]);
-    header('Content-Type: application/json');
-    echo $prescription->toJSON();
-    exit();
-}
-?>
-
 <html>
     <head>
     	<meta charset="UTF-8">
