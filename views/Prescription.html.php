@@ -93,7 +93,7 @@
 		//window.location.href = kitId + "&prescription_id=" + encodeURIComponent(prescriptionStr);
 
         $.post(
-        	'actions.php',,
+        	'actions.php',
             {action: 'create_admission', prescription: prescriptionStr},
             function(targetUrl){
                 window.location.href = targetUrl;
