@@ -21,6 +21,7 @@ if ($dbConnResult === true) {
                 header('Content-Type: application/text');
                 echo 'prescription.php?culture=' . Localization::getLang();
             } else if ($kit->getStatus() == KitInfo::STATUS_ASSIGNED) {
+                $kit->storeTracking(KitInfo::ACTION_PROCESSED, '');
                 header('Content-Type: application/text');
                 echo $kit->generateURLtoLC2();
             }
