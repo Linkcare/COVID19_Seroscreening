@@ -4,23 +4,23 @@
           		<p id="stop-button" style="position: absolute;top: 0;text-align: right;width: 100%;padding-right: 15px;font-size: 18px;font-weight: bold;cursor: pointer;text-shadow:0.1rem 0.1rem rgba(255,255,255,.5);">&times;</p>
             </div>
         </div>
-        
+
         <div class="container col-lg-4 col-md-8">
-        	<p>    	
+        	<p>
        		 <i id="back-arrow" class="btn fa fa-arrow-left" aria-hidden="true" style="cursor: pointer;"></i>
         	</p>
         	<div class="form-group">
         		<h4 style="text-align: center;"><b><?php
         echo (Localization::translate('Prescription.Title'));
         ?></b></h4>
-                
+
                 <label id="label-text" for="labelInput"><?php
 
                 echo (Localization::translate('Prescription.Label'));
                 ?>:</label>
 
                     <div id="prescriptionInfo" style="display: none;">
-                  		<ul> 
+                  		<ul>
                   			<li><b><?php
                     echo (Localization::translate('Prescription.Id.Label'));
                     ?>:</b> <span id="prescriptionId"></span></li>
@@ -44,7 +44,7 @@
 
             		<input type="text" class="form-control" id="labelInput">
           	</div>
-          	
+
           	<div id="info-div">
           		<p><?php
 
@@ -55,29 +55,34 @@
                 	&nbsp;
                 	<img class="img-fluid mx-auto" style="width: 20%;" src="img/phone-min.png">
             	</div>
-          	</div>          	          
-        	
+          	</div>
+
           	<div id="button-div">
               	<p><?php
-            echo (Localization::translate('Prescription.Scanner.Info'));
+            echo (Localization::translate('Camera.Open.Message'));
             ?>:</p>
+
             	<div class="text-center">
-            		<img id="start-button" class="img-fluid mx-auto" style="width: 30%; cursor: pointer;" src="img/camera.png">      		
+            		<img id="start-button" class="img-fluid mx-auto" style="width: 30%; cursor: pointer; margin-bottom: 8px;" src="img/camera.png">
+            		
+            		<!-- message and disabled button in case we are on a different browser than Safari at iOS -->
+            		<img id="start-button-disabled" class="img-fluid mx-auto" style="display: none; width: 30%; margin-bottom: 8px;" src="img/camera_disabled.png">
+        			<p id="ios-camera-message" style="display: none; color: red;"><?php
+        echo (Localization::translate('Camera.iOS'));
+        ?></p>
             	</div>
-            	
+
         	</div>
-        	
-        	<!-- div to show any errors at the qr video scanning -->
-        	<p id="cam-errors" style="display: none;"></p>
-        	
-        	<input id="btnSubmit" type="button" class="btn btn-success text-center btn-block btn-lg" target_url="<?php
+
+        	<input id="btnSubmit" type="button" style="margin-bottom: 10px;" class="btn btn-success text-center btn-block btn-lg" target_url="<?php
         echo ($kit->generateURLtoLC2())?>" value="<?php
 
         echo (Localization::translate('Prescription.Button.Start'));
-        ?>">     
-        	
-        	
-        </div>  
+        ?>">
+
+    		<!-- div to display any errors when scanning a qr code -->
+        	<p id="cam-errors" style="display: none;"></p>
+        </div>
 	</body>
 </html>
 
@@ -98,7 +103,7 @@
             function(targetUrl){
                 window.location.href = targetUrl;
             }
-        );      		   	
+        );
 	});
 
 	$("#back-arrow").click(function (e) {
@@ -113,7 +118,7 @@
 
             $("#prescriptionInfo").hide();
             $("#labelInput").val("");
-            
+
 		} else {
 			//Else we want to go back to the index, meaning we are showing the fields and no prescription has been scanned
 			// and we just want to go back
@@ -123,11 +128,13 @@ echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang())
 		}
 	});
 
+
+
 	/* Disable and enable of the submit button according to the text input, if it's empty disable it */
 	$(document).ready(function() {
 	    var submit = $("#btnSubmit");
 	    submit.prop('disabled', true);
-	    
+
 	    $("#labelInput").on('input change', function() {
 	        submit.prop('disabled', !$(this).val().length);
 	        $("#prescriptionError").hide();
@@ -142,8 +149,8 @@ echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang())
     /* Import and Worker Path */
     import QrScanner from "./js/qr-scanner.min.js";
     QrScanner.WORKER_PATH = './js/qr-scanner-worker.min.js';
-    
-    /* Variables from the html */        
+
+    /* Variables from the html */
 
     const video = document.getElementById('qr-video');
     const camQrResult = document.getElementById('labelInput');
@@ -156,9 +163,9 @@ echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang())
     function cameraStop(){
         scanner.stop();
         //hide again the camera div
-        $('#div-qr-video').hide();        
+        $('#div-qr-video').hide();
     }
-    
+
     //Function to write the results of the qr scan at a certain label
     function setResult(label, submitButton, result) {
         $.post(
@@ -173,7 +180,7 @@ echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang())
 
                     echo (Localization::getLang());
                     ?>';
-                } else{   
+                } else{
                     // Fill the prescription fields
                     console.log(jsonPrescription);
                     $("#prescriptionId").html(jsonPrescription.id);
@@ -182,9 +189,9 @@ echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang())
                     $("#prescriptionParticipantId").html(jsonPrescription.participantId);
                     $("#prescriptionExpires").html(jsonPrescription.expirationDate);
                     $("#prescriptionRounds").html(jsonPrescription.rounds);
-                    
+
                     $("#prescriptionInfo").show();
-                     
+
                     //Now that a prescription has been scanned, hide the rest of the page
                     $("#labelInput").hide();
                     $("#label-text").hide();
@@ -193,35 +200,43 @@ echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang())
                     $("#prescriptionError").hide();
 
                     //Write the scanned data into the hidden input label
-                    label.value = result; 
+                    label.value = result;
                     //Enable the start button
                     submitButton.disabled = false;
                 }
-            }
-        );      		   	
-
+        });
         //Once a result has been scanned, stop the scanner and hide the camera div
-        cameraStop();             
+        cameraStop();
     }
 
     /* QR Scanner functionality and events */
 
-    const scanner = new QrScanner(video, result => setResult(camQrResult, submitButton, result), error => {   
+    const scanner = new QrScanner(video, result => setResult(camQrResult, submitButton, result), error => {
         //The "No QR code found" error is common when there is no qr code being scanned, unless it's different,
         //write the error at the corresponding div at the bottom of the page
-        if(error != "No QR code found"){                        
+        if(error != "No QR code found"){
             camError.textContent = error;
             camError.style.color = 'inherit';
-        }                    
-    });
-    
-    document.getElementById('start-button').addEventListener('click', () => {
-        scanner.start();
-        //show the camera div
-        $('#div-qr-video').show();
+        }
     });
 
+    //Get the user agent
+    var ua = detect.parse(navigator.userAgent);
+    // in case we are at iOS using Firefox or Chrome, show a warning message to notify the user that the camera won't work
+    if(ua.browser.family != 'Mobile Safari' && ua.os.family === 'iOS') {
+        $("#start-button").hide();
+    	$("#ios-camera-message").show();
+        $("#start-button-disabled").show();
+    }else{
+        //else add the scanner button listener functionality
+        document.getElementById('start-button').addEventListener('click', () => {
+            scanner.start();
+            //show the camera div
+            $('#div-qr-video').show();
+        });
+    }
+
     document.getElementById('stop-button').addEventListener('click', () => {
-        cameraStop();       
+        cameraStop();
     });
-</script>  
+</script>
