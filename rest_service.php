@@ -159,7 +159,7 @@ function processKit($kitInfo) {
             throw new APIException($api->errorCode(), $api->errorMessage());
         }
 
-        $admissionForKit = count($kitAdmissions) > 0 ? $kitAdmissions[0] : null;
+        $admissionForKit = count($kitAdmissions) > 0 ? $kitAdmissions[0] : null; // There can only exist one Admission per device
         if ($admissionForKit &&
                 in_array($admissionForKit->getStatus(), [APIAdmission::STATUS_ACTIVE, APIAdmission::STATUS_ENROLLED, APIAdmission::STATUS_INCOMPLETE])) {
             $activeAdmission = $admissionForKit;
@@ -215,7 +215,7 @@ function processKit($kitInfo) {
     if ($admissionForKit &&
             !in_array($admissionForKit->getStatus(), [APIAdmission::STATUS_ACTIVE, APIAdmission::STATUS_ENROLLED, APIAdmission::STATUS_INCOMPLETE])) {
         // The ADMISSION exists and it is finished
-        $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_CASE);
+        $lc2Action = new LC2Action(LC2Action::ACTION_REDIRECT_TO_CASE);
         $lc2Action->setCaseId($admissionForKit->getCaseId());
         $lc2Action->setAdmissionId($admissionForKit->getId());
         return $lc2Action;
@@ -370,8 +370,9 @@ function createNewAdmission($kitInfo, $prescription, $caseId, $subscriptionId) {
     $lc2Action->setAdmissionId($admission->getId());
     if (!$admission->isNew()) {
         // There already exists an active Admission for the patient. Cannot create a new Admission
+        $error = new ErrorInfo(ErrorInfo::ADMISSION_ACTIVE);
         $lc2Action->setActionType(LC2Action::ACTION_ERROR_MSG);
-        $lc2Action->setErrorMessage(Localization::translate('Admission.AlreadyActive', ['kit_id' => $kitInfo->getId()]));
+        $lc2Action->setErrorMessage($error->getErrorMessage());
         return $lc2Action;
     }
 

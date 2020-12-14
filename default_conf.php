@@ -27,7 +27,7 @@ $GLOBALS["WS_LINK"] = "https://test-api.linkcareapp.com/ServerWSDL.php";
  * Url of the external service that manages the KIT Information. Used to update the Kit Status. If not provided then it is assumed that we have local
  * access to the DB and it is not necessary to invoke a remote service to change the status of a kit
  */
-$GLOBALS["KIT_INFO_MGR"] = "https://test-api.linkcareapp.com/";
+// $GLOBALS["KIT_INFO_MGR"] = "https://test-api.linkcareapp.com/";
 
 // The QR code of prescriptions has a check digit at the begining of the string?
 $GLOBALS['QR_WITH_CHECK_DIGIT'] = true;
