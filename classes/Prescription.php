@@ -45,7 +45,7 @@ class Prescription {
             $this->expirationDate = count($parts) > $ix ? $parts[$ix] : nil;
             $ix++;
             $this->rounds = count($parts) > $ix ? max(intval($parts[$ix]), 1) : 1;
-            $this->valid = $this->id && $this->team && $this->program && $this->participantId && $this->expirationDate;
+            $this->valid = $this->id && $this->program && $this->participantId && $this->expirationDate;
             if ($this->withCheckDigit) {
                 // Verify the check digit
                 $this->valid = $this->valid && $this->validateCheckDigit($str);
