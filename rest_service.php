@@ -76,7 +76,12 @@ function processKit($kitInfo) {
 
     if ($prescription) {
         // Find the subscription for the PROGRAM/TEAM provided in the prescription information
-        $subscriptionId = findSubscription($prescription, $kitInfo->getProgramCode());
+        $subscription = findSubscription($prescription, $kitInfo->getProgramCode());
+        if (!$subscription) {
+            $e = new KitException(ErrorInfo::SUBSCRIPTION_NOT_FOUND);
+            throw $e;
+        }
+
         /*
          * Find if there exists a patient with the PARTICIPANT_ID
          */
@@ -97,7 +102,7 @@ function processKit($kitInfo) {
         }
         if ($prescription->getId()) {
             $searchCondition = new StdClass();
-            $searchCondition->subscription = $subscriptionId;
+            $searchCondition->subscription = $subscription->getId();
             $searchCondition->data_code = new StdClass();
             $searchCondition->data_code->name = 'PRESCRIPTION_ID';
             $searchCondition->data_code->value = $prescription->getId();
@@ -154,7 +159,7 @@ function processKit($kitInfo) {
         $searchCondition->data_code = new StdClass();
         $searchCondition->data_code->name = 'KIT_ID';
         $searchCondition->data_code->value = $kitInfo->getId();
-        $kitAdmissions = $api->case_admission_list($casesByDevice[0]->getId(), true, $subscriptionId, json_encode($searchCondition));
+        $kitAdmissions = $api->case_admission_list($casesByDevice[0]->getId(), true, $subscription->getId(), json_encode($searchCondition));
         if ($api->errorCode()) {
             throw new APIException($api->errorCode(), $api->errorMessage());
         }
@@ -180,7 +185,7 @@ function processKit($kitInfo) {
             $searchCondition->data_code = new StdClass();
             $searchCondition->data_code->name = 'PRESCRIPTION_ID';
             $searchCondition->data_code->value = $prescription->getId();
-            $prescriptionAdmissions = $api->case_admission_list($caseId, true, $subscriptionId, json_encode($searchCondition));
+            $prescriptionAdmissions = $api->case_admission_list($caseId, true, $subscription->getId(), json_encode($searchCondition));
             if ($api->errorCode()) {
                 throw new APIException($api->errorCode(), $api->errorMessage());
             }
@@ -218,37 +223,42 @@ function processKit($kitInfo) {
         $lc2Action = new LC2Action(LC2Action::ACTION_REDIRECT_TO_CASE);
         $lc2Action->setCaseId($admissionForKit->getCaseId());
         $lc2Action->setAdmissionId($admissionForKit->getId());
-        return $lc2Action;
-    }
-
-    if ($prescription) {
-        // Everything looks right so far, but there is one last verification: There cannont be more ADMISSIONS for the prescription ID than permitted
-        // rounds
-        if ($finishedAdmissions >= $prescription->getRounds()) {
-            throw new KitException(ErrorInfo::MAX_ROUNDS_EXCEEDED);
-        }
-    }
-
-    if (!$activeAdmission && !$prescription) {
-        // It is not possible to create a new ADMISSION without the prescription information
-        throw new KitException(ErrorInfo::PRESCRIPTION_MISSING);
-    } elseif (!$activeAdmission) {
-        $tz_object = new DateTimeZone('UTC');
-        $datetime = new DateTime();
-        $datetime->setTimezone($tz_object);
-        $today = $datetime->format('Y\-m\-d');
-
-        if ($prescription && $prescription->getExpirationDate() && $prescription->getExpirationDate() < $today) {
-            throw new KitException(ErrorInfo::PRESCRIPTION_EXPIRED);
-        }
-
-        // The KIT ID is new. Create a new ADMISSION
-        $lc2Action = createNewAdmission($kitInfo, $prescription, $caseId, $subscriptionId);
     } else {
-        // We have found an active ADMISSION for this Kit ID
-        $lc2Action = updateAdmission($activeAdmission, $kitInfo);
+        if ($prescription) {
+            // Everything looks right so far, but there is one last verification: There cannont be more ADMISSIONS for the prescription ID than
+            // permitted
+            // rounds
+            if ($finishedAdmissions >= $prescription->getRounds()) {
+                throw new KitException(ErrorInfo::MAX_ROUNDS_EXCEEDED);
+            }
+        }
+
+        if (!$activeAdmission && !$prescription) {
+            // It is not possible to create a new ADMISSION without the prescription information
+            throw new KitException(ErrorInfo::PRESCRIPTION_MISSING);
+        } elseif (!$activeAdmission) {
+            $tz_object = new DateTimeZone('UTC');
+            $datetime = new DateTime();
+            $datetime->setTimezone($tz_object);
+            $today = $datetime->format('Y\-m\-d');
+
+            if ($prescription && $prescription->getExpirationDate() && $prescription->getExpirationDate() < $today) {
+                throw new KitException(ErrorInfo::PRESCRIPTION_EXPIRED);
+            }
+
+            // The KIT ID is new. Create a new ADMISSION
+            $lc2Action = createNewAdmission($kitInfo, $prescription, $caseId, $subscription->getId());
+        } else {
+            // We have found an active ADMISSION for this Kit ID
+            $lc2Action = updateAdmission($activeAdmission, $kitInfo);
+        }
     }
 
+    if ($lc2Action) {
+        // Complete the action with the PROGRAM and TEAM information
+        $subscription->getProgram() ? $lc2Action->setProgramId($subscription->getProgram()->getId()) : null;
+        $subscription->getTeam() ? $lc2Action->setTeamId($subscription->getTeam()->getId()) : null;
+    }
     return $lc2Action;
 }
 
@@ -262,11 +272,11 @@ function processKit($kitInfo) {
  * @param Prescription $prescription
  * @param string $defaultProgramCode
  * @throws APIException
- * @return string
+ * @return APISubscription
  */
 function findSubscription($prescription, $defaultProgramCode = null) {
     $api = LinkcareSoapAPI::getInstance();
-    $subscriptionId = null;
+    $found = null;
     $teamId = null;
     $programId = null;
     $programCode = null;
@@ -306,17 +316,12 @@ function findSubscription($prescription, $defaultProgramCode = null) {
     foreach ($subscriptions as $s) {
         $p = $s->getProgram();
         if ($p && $p->getCode() == $programCode) {
-            $subscriptionId = $s->getId();
+            $found = $s;
             break;
         }
     }
 
-    if (!$subscriptionId) {
-        $e = new KitException(ErrorInfo::SUBSCRIPTION_NOT_FOUND);
-        throw $e;
-    }
-
-    return $subscriptionId;
+    return $found;
 }
 
 /**

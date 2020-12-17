@@ -11,6 +11,8 @@ class LC2Action {
     private $formId;
     private $admissionId;
     private $errorMessage;
+    private $programId;
+    private $teamId;
 
     public function __construct($actionType = null) {
         $this->setActionType($actionType);
@@ -54,6 +56,22 @@ class LC2Action {
 
     /**
      *
+     * @param int $programId
+     */
+    public function setProgramId($programId) {
+        $this->programId = $programId;
+    }
+
+    /**
+     *
+     * @param int $teamId
+     */
+    public function setTeamId($teamId) {
+        $this->teamId = $teamId;
+    }
+
+    /**
+     *
      * @param string $errorMsg
      */
     public function setErrorMessage($errorMsg) {
@@ -73,16 +91,24 @@ class LC2Action {
         $action = new stdClass();
         $action->action_request = $this->action;
         if ($this->taskId) {
-            $action->task_id = $this->taskId;
+            $action->task = $this->taskId;
         }
         if ($this->formId) {
-            $action->form_id = $this->formId;
+            $action->form = $this->formId;
         }
         if ($this->caseId) {
-            $action->case_id = $this->caseId;
+            $action->case = $this->caseId;
         }
         if ($this->admissionId) {
-            $action->admission_id = $this->admissionId;
+            $action->admission = $this->admissionId;
+        }
+
+        if ($this->programId) {
+            $action->program = $this->programId;
+        }
+
+        if ($this->teamId) {
+            $action->team = $this->teamId;
         }
 
         if ($this->errorMessage) {
