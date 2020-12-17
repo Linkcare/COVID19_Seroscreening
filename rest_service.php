@@ -71,6 +71,8 @@ function processKit($kitInfo) {
     $activeAdmission = null;
     $finishedAdmissions = 0;
     $caseId = null;
+    $programId = null;
+    $teamId = null;
 
     $prescription = trim($kitInfo->getPrescriptionId()) != '' ? new Prescription($kitInfo->getPrescriptionId(), true) : null;
 
@@ -81,6 +83,9 @@ function processKit($kitInfo) {
             $e = new KitException(ErrorInfo::SUBSCRIPTION_NOT_FOUND);
             throw $e;
         }
+
+        $programId = $subscription->getProgram()->getId();
+        $teamId = $subscription->getTeam()->getId();
 
         /*
          * Find if there exists a patient with the PARTICIPANT_ID
@@ -159,7 +164,8 @@ function processKit($kitInfo) {
         $searchCondition->data_code = new StdClass();
         $searchCondition->data_code->name = 'KIT_ID';
         $searchCondition->data_code->value = $kitInfo->getId();
-        $kitAdmissions = $api->case_admission_list($casesByDevice[0]->getId(), true, $subscription->getId(), json_encode($searchCondition));
+        $kitAdmissions = $api->case_admission_list($casesByDevice[0]->getId(), true, $subscription ? $subscription->getId() : null,
+                json_encode($searchCondition));
         if ($api->errorCode()) {
             throw new APIException($api->errorCode(), $api->errorMessage());
         }
@@ -251,13 +257,15 @@ function processKit($kitInfo) {
         } else {
             // We have found an active ADMISSION for this Kit ID
             $lc2Action = updateAdmission($activeAdmission, $kitInfo);
+            $lc2Action->setProgramId($activeAdmission->getSubscription()->getProgram()->getId());
+            $lc2Action->setTeamId($activeAdmission->getSubscription()->getTeam()->getId());
         }
     }
 
     if ($lc2Action) {
         // Complete the action with the PROGRAM and TEAM information
-        $subscription->getProgram() ? $lc2Action->setProgramId($subscription->getProgram()->getId()) : null;
-        $subscription->getTeam() ? $lc2Action->setTeamId($subscription->getTeam()->getId()) : null;
+        $programId ? $lc2Action->setProgramId($programId) : null;
+        $teamId ? $lc2Action->setTeamId($teamId) : null;
     }
     return $lc2Action;
 }

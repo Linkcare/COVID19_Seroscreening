@@ -17,7 +17,11 @@ class APIProgram {
             return null;
         }
         $program = new APIProgram();
-        $program->id = (string) $xmlNode->ref;
+        if ($xmlNode->ref) {
+            $program->id = (string) $xmlNode->ref;
+        } else {
+            $program->id = (string) $xmlNode->id;
+        }
         $program->code = (string) $xmlNode->code;
         $program->version = (string) $xmlNode->version;
         $program->name = (string) $xmlNode->name;
