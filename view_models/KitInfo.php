@@ -286,6 +286,9 @@ class KitInfo {
      * @param string $prescriptionId
      */
     public function storeTracking($action, $prescriptionId) {
+        if (!$GLOBALS["KIT_TRACKING"]) {
+            return;
+        }
         $tz_object = new DateTimeZone('UTC');
         $datetime = new DateTime();
         $datetime->setTimezone($tz_object);

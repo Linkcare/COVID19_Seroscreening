@@ -61,6 +61,8 @@ $GLOBALS["KIT_RESULTS_Q_ID"]["KIT_ID"] = 12;
 // ID of the REGISTER_KIT FORM questions
 $GLOBALS["REGISTER_KIT_Q_ID"]["REGISTER_STATUS"] = 1;
 
+$GLOBALS["KIT_TRACKING"] = true;
+
 $GLOBALS["DEBUG_MODE"] = false;
 
 // Load particular configuration
