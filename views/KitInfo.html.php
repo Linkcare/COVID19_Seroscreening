@@ -90,8 +90,9 @@ if ($kit->getStatus() == KitInfo::STATUS_NOT_USED) {
             ?>	</button>            
         	<br>
           <?php
-        } else if ($kit->getStatus() == KitInfo::STATUS_ASSIGNED) {
-            /* The Kit status is: assigned */
+        } else if ($kit->getStatus() == KitInfo::STATUS_ASSIGNED || $kit->getStatus() == KitInfo::STATUS_PROCESSING ||
+                $kit->getStatus() == KitInfo::STATUS_PROCESSING_5MIN || $kit->getStatus() == KitInfo::STATUS_INSERT_RESULTS) {
+            /* The Kit status is: assigned, processing, processing (results in <5 min.) or insert results */
             ?>  
         	<button id="btnProcessKit" class="btn btn-success text-center btn-block btn-lg"><?php
 
@@ -113,10 +114,9 @@ if ($kit->getStatus() == KitInfo::STATUS_NOT_USED) {
             </button>
         
         <?php
+        // The discard button will be hidden at the moment, the correct if would be the following:
+        // if ($kit->getStatus() == KitInfo::STATUS_NOT_USED || $kit->getStatus() == KitInfo::STATUS_ASSIGNED) {
         if (false) {
-            // The discard button will be hidden at the moment, the correct if would be the following:
-            // if ($kit->getStatus() == KitInfo::STATUS_NOT_USED || $kit->getStatus() == KitInfo::STATUS_ASSIGNED) {
-
             /* The Kit is valid, meaning it can be discarded */
             ?> 
             
@@ -136,7 +136,7 @@ if ($kit->getStatus() == KitInfo::STATUS_NOT_USED) {
             	</i></a>
 
         	</div>
-        		        	        	
+    		        	        	
         <?php
         }
         ?>

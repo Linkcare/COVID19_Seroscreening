@@ -42,7 +42,10 @@ if ($dbConnResult !== true) {
                 openKitInfoView($kit);
                 break;
             case KitInfo::STATUS_ASSIGNED :
-            /* The ASSIGNED and USED status are equal */
+            /* The ASSIGNED, PROCESSING, PROCESSING_5MIN, INSERT_RESULTS and USED status are equal */
+            case KitInfo::STATUS_PROCESSING :
+            case KitInfo::STATUS_PROCESSING_5MIN :
+            case KitInfo::STATUS_INSERT_RESULTS :
             case KitInfo::STATUS_USED :
                 $kit->generateURLtoLC2();
                 openKitInfoView($kit);
