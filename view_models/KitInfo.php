@@ -235,9 +235,6 @@ class KitInfo {
         }
 
         switch ($this->getStatus()) {
-            case KitInfo::STATUS_ASSIGNED :
-                $urlStart .= 'kit_id=' . $this->getId();
-                break;
             case KitInfo::STATUS_NOT_USED :
                 $urlStart .= 'service_name=seroscreening';
                 $urlStart .= '&kit_id=' . $this->getId();
@@ -246,6 +243,9 @@ class KitInfo {
                 $urlStart .= '&expiration_date=' . $this->getExp_date();
                 $urlStart .= '&batch_number=' . $this->getBatch_number();
                 $urlStart .= '&program=' . $this->getProgramCode();
+                break;
+            default :
+                $urlStart .= 'kit_id=' . $this->getId();
                 break;
         }
 
