@@ -95,8 +95,13 @@ if ($kit->getStatus() == KitInfo::STATUS_NOT_USED) {
             /* The Kit status is: assigned, processing, processing (results in <5 min.) or insert results */
             ?>  
         	<button id="btnProcessKit" class="btn btn-success text-center btn-block btn-lg"><?php
-
-            echo (Localization::translate('KitInfo.Button.Proceed'));
+            if ($kit->getStatus() == KitInfo::STATUS_ASSIGNED || $kit->getStatus() == KitInfo::STATUS_PROCESSING) {
+                echo (Localization::translate('KitInfo.Button.Proceed'));
+            } else if ($kit->getStatus() == KitInfo::STATUS_PROCESSING_5MIN) {
+                echo (Localization::translate('KitInfo.Button.EarlyProceed'));
+            } else if ($kit->getStatus() == KitInfo::STATUS_INSERT_RESULTS) {
+                echo (Localization::translate('KitInfo.Button.InsertResults'));
+            }
             ?>	</button>            
         	<br>
         	        	        	
