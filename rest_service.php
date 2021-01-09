@@ -403,9 +403,13 @@ function createNewAdmission($kitInfo, $prescription, $caseId, $subscriptionId) {
         createKitInfoTask($admission->getId(), $kitInfo);
         createPrescriptionInfoTask($admission->getId(), $prescription);
         list($taskId, $formId) = createRegisterKitTask($admission->getId());
-        $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_FORM);
         $lc2Action->setTaskId($taskId);
-        $lc2Action->setFormId($formId);
+        if ($formId) {
+            $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_FORM);
+            $lc2Action->setFormId($formId);
+        } else {
+            $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_TASK);
+        }
     } catch (APIException $e) {
         $failed = true;
         $lc2Action->setActionType(LC2Action::ACTION_ERROR_MSG);
@@ -476,6 +480,7 @@ function updateAdmission($admission, $kitInfo) {
                 break;
             }
         }
+        $resultTaskIsMultiform = (count($forms) > 1);
     }
 
     if ($kitResultsTask && !$kitResultsTask->getLocked()) {
@@ -512,9 +517,13 @@ function updateAdmission($admission, $kitInfo) {
         $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_TASK);
         $lc2Action->setTaskId($kitResultsTask->getId());
     } elseif ($registerKitTask && $lastForm) {
-        $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_FORM);
         $lc2Action->setTaskId($registerKitTask->getId());
-        $lc2Action->setFormId($lastForm->getId());
+        if ($resultTaskIsMultiform) {
+            $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_FORM);
+            $lc2Action->setFormId($lastForm->getId());
+        } else {
+            $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_TASK);
+        }
     } else {
         // The "KIT_RESULTS" TASK was not found, so we will ask LC2 to redirect to the CASE
         $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_CASE);
@@ -700,13 +709,15 @@ function createRegisterKitTask($admissionId) {
         throw new APIException($api->errorCode(), $api->errorMessage());
     }
 
-    /* @var APIForm $targetForm */
-    $targetForm = null;
-    foreach ($forms as $form) {
-        // find the first open FORM of the TASK or the last FORM if all are closed
-        $targetForm = $form;
-        if ($form->getStatus() == "OPEN") {
-            break;
+    if (count($forms) > 1) {
+        /* @var APIForm $targetForm */
+        $targetForm = null;
+        foreach ($forms as $form) {
+            // find the first open FORM of the TASK or the last FORM if all are closed
+            $targetForm = $form;
+            if ($form->getStatus() == "OPEN") {
+                break;
+            }
         }
     }
 
