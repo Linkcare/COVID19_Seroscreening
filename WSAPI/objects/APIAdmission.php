@@ -12,6 +12,7 @@ class APIAdmission {
     // Private members
     private $id;
     private $caseId;
+    private $case;
     private $enrolDate;
     private $admissionDate;
     private $dischargeRequestDate;
@@ -39,6 +40,7 @@ class APIAdmission {
         if ($xmlNode->data) {
             if ($xmlNode->data->case) {
                 $admission->caseId = NullableString($xmlNode->data->case->ref);
+                $admission->case = APISubscription::parseXML($xmlNode->data->case);
             }
             $admission->enrolDate = NullableString($xmlNode->data->enrol_date);
             $admission->admissionDate = NullableString($xmlNode->data->admission_date);
@@ -80,6 +82,14 @@ class APIAdmission {
      */
     public function isNew() {
         return $this->isNewAdmission;
+    }
+
+    /**
+     *
+     * @return APICase
+     */
+    public function getCase() {
+        return $this->case;
     }
 
     /**

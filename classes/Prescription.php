@@ -1,13 +1,20 @@
 <?php
 
 class Prescription {
+    // Prescription types
+    const TYPE_E_PRESCRIPTION = 1;
+    const TYPE_PERSONAL = 2;
+
+    // Class members
     private $valid = false;
+    private $type;
     private $id;
     private $participantId;
     private $expirationDate;
     private $team;
     private $program;
     private $rounds = 1;
+    private $admissionId;
     private $checkDigit = "";
     private $withCheckDigit;
 
@@ -23,32 +30,42 @@ class Prescription {
             return;
         }
         $parts = explode(';', $str);
-        if (count($parts) == 1) {
-            // Old format with only participantId
-            $this->participantId = $str;
-            $this->valid = $allowParticipantId;
+        if (startsWith('adm=', $str)) {
+            $this->type = self::TYPE_PERSONAL;
+            // ePrescription with the ADMISSION information
+            $vars = explode('=', $parts[0]);
+            $this->admissionId = $vars[1];
+            $this->valid = $this->admissionId != '';
         } else {
-            $ix = 0;
-            if ($this->withCheckDigit) {
-                // The Prescription has a check digit at the begining of the string
-                $this->checkDigit = count($parts) > $ix ? $parts[$ix] : nil;
+            $this->type = self::TYPE_E_PRESCRIPTION;
+            $parts = explode(';', $str);
+            if (count($parts) == 1) {
+                // Old format with only participantId
+                $this->participantId = $str;
+                $this->valid = $allowParticipantId;
+            } else {
+                $ix = 0;
+                if ($this->withCheckDigit) {
+                    // The Prescription has a check digit at the begining of the string
+                    $this->checkDigit = count($parts) > $ix ? $parts[$ix] : nil;
+                    $ix++;
+                }
+                $this->id = count($parts) > $ix ? $parts[$ix] : nil;
                 $ix++;
-            }
-            $this->id = count($parts) > $ix ? $parts[$ix] : nil;
-            $ix++;
-            $this->team = count($parts) > $ix ? $parts[$ix] : nil;
-            $ix++;
-            $this->program = count($parts) > $ix ? $parts[$ix] : nil;
-            $ix++;
-            $this->participantId = count($parts) > $ix ? $parts[$ix] : nil;
-            $ix++;
-            $this->expirationDate = count($parts) > $ix ? $parts[$ix] : nil;
-            $ix++;
-            $this->rounds = count($parts) > $ix ? max(intval($parts[$ix]), 1) : 1;
-            $this->valid = $this->id && $this->program && $this->participantId && $this->expirationDate;
-            if ($this->withCheckDigit) {
-                // Verify the check digit
-                $this->valid = $this->valid && $this->validateCheckDigit($str);
+                $this->team = count($parts) > $ix ? $parts[$ix] : nil;
+                $ix++;
+                $this->program = count($parts) > $ix ? $parts[$ix] : nil;
+                $ix++;
+                $this->participantId = count($parts) > $ix ? $parts[$ix] : nil;
+                $ix++;
+                $this->expirationDate = count($parts) > $ix ? $parts[$ix] : nil;
+                $ix++;
+                $this->rounds = count($parts) > $ix ? max(intval($parts[$ix]), 1) : 1;
+                $this->valid = $this->id && $this->program && $this->participantId && $this->expirationDate;
+                if ($this->withCheckDigit) {
+                    // Verify the check digit
+                    $this->valid = $this->valid && $this->validateCheckDigit($str);
+                }
             }
         }
     }
@@ -56,6 +73,10 @@ class Prescription {
     // **************************************************************
     // GETTERS
     // **************************************************************
+    function getType() {
+        return $this->type;
+    }
+
     function getId() {
         return $this->id;
     }
@@ -81,6 +102,10 @@ class Prescription {
 
     function getRounds() {
         return $this->rounds;
+    }
+
+    function getAdmissionId() {
+        return $this->admissionId;
     }
 
     // **************************************************************

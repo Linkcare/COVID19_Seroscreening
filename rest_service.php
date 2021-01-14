@@ -74,14 +74,51 @@ function processKit($kitInfo) {
     $programId = null;
     $teamId = null;
 
+    // Find out if there exists a patient assigned to the Kit ID
+    $casesByDevice = $api->case_search("SEROSCREENING:" . $kitInfo->getId() . "");
+    if (!empty($casesByDevice)) {
+        $caseByDevice = $casesByDevice[0];
+    }
+    if ($api->errorCode()) {
+        throw new APIException($api->errorCode(), $api->errorMessage());
+    }
+
+    /*
+     * The prescription information generally is provided only when creating a new ADMISSION.
+     * If it is not provided, it means that we are looking for an existing ADMISSION than can be found using the KIT_ID
+     */
     $prescription = trim($kitInfo->getPrescriptionId()) != '' ? new Prescription($kitInfo->getPrescriptionId(), true) : null;
 
-    if ($prescription) {
+    $admissionFromPrescription = null;
+    $alreadyInitialized = false;
+
+    if ($prescription && $prescription->getAdmissionId()) {
+        // The prescription contains information about the ADMISSION that should be used
+        list($admissionFromPrescription, $alreadyInitialized) = loadAdmission($prescription->getAdmissionId(), $kitInfo, $caseByDevice);
+        $subscription = $admissionFromPrescription->getSubscription();
+        $caseId = $admissionFromPrescription->getCaseId();
+        $programId = $subscription->getProgram()->getId();
+        $teamId = $subscription->getTeam()->getId();
+        if ($alreadyInitialized) {
+            // The ADMISSION exists and is already initialized with a KIT ID
+            $activeAdmission = $admissionFromPrescription;
+        }
+
+        if (!in_array($admissionFromPrescription->getStatus(),
+                [APIAdmission::STATUS_ACTIVE, APIAdmission::STATUS_ENROLLED, APIAdmission::STATUS_INCOMPLETE])) {
+            // The ADMISSION exists and it is finished
+            $lc2Action = new LC2Action(LC2Action::ACTION_REDIRECT_TO_CASE);
+            $lc2Action->setCaseId($caseId);
+            $lc2Action->setAdmissionId($admissionFromPrescription->getId());
+            $lc2Action->setProgramId($programId);
+            $lc2Action->setTeamId($teamId);
+            return $lc2Action;
+        }
+    } elseif ($prescription) {
         // Find the subscription for the PROGRAM/TEAM provided in the prescription information
         $subscription = findSubscription($prescription, $kitInfo->getProgramCode());
         if (!$subscription) {
-            $e = new KitException(ErrorInfo::SUBSCRIPTION_NOT_FOUND);
-            throw $e;
+            throw new KitException(ErrorInfo::SUBSCRIPTION_NOT_FOUND);
         }
 
         $programId = $subscription->getProgram()->getId();
@@ -133,141 +170,185 @@ function processKit($kitInfo) {
                 }
             }
         }
-    }
-
-    // Find out if there exists a patient assigned to the Kit ID
-    $casesByDevice = $api->case_search("SEROSCREENING:" . $kitInfo->getId() . "");
-    if ($api->errorCode()) {
-        throw new APIException($api->errorCode(), $api->errorMessage());
-    }
-
-    if ($prescription && empty($casesByParticipant) && !empty($casesByDevice)) {
-        /*
-         * If we have the information of the PARTICIPANT but there exists no CASE for him (no ADMISSION created yet), then the CASE found by the KIT
-         * ID must be a different participant, what means that the KIT ID has already been used
-         */
-        throw new KitException(ErrorInfo::KIT_ALREADY_USED);
-    }
-
-    if (!empty($casesByDevice)) {
-        if ($caseId && $caseId != $casesByDevice[0]->getId()) {
+        if (empty($casesByParticipant) && $caseByDevice) {
+            /*
+             * The information in the prescription does not correspond to an existing patient but we found a patient with the KIT ID assigned,
+             * what means that the KIT ID has already been used
+             */
+            throw new KitException(ErrorInfo::KIT_ALREADY_USED);
+        }
+        if ($caseId && $caseByDevice && $caseId != $caseByDevice->getId()) {
             /*
              * ERROR: the case associated to the PARTICIPANT_REF provided is different than the one associated to the KIT_ID. This means that we are
              * scanning a KitID that was previously used for another CASE
              */
             throw new KitException(ErrorInfo::KIT_ALREADY_USED);
         } else {
-            $caseId = $casesByDevice[0]->getId();
+            $caseId = $caseByDevice->getId();
         }
 
+        if ($caseByDevice) {
+            $searchCondition = new StdClass();
+            $searchCondition->data_code = new StdClass();
+            $searchCondition->data_code->name = 'KIT_ID';
+            $searchCondition->data_code->value = $kitInfo->getId();
+            $kitAdmissions = $api->case_admission_list($caseByDevice->getId(), true, $subscription ? $subscription->getId() : null,
+                    json_encode($searchCondition));
+            if ($api->errorCode()) {
+                throw new APIException($api->errorCode(), $api->errorMessage());
+            }
+
+            $admissionForKit = count($kitAdmissions) > 0 ? $kitAdmissions[0] : null; // There can only exist one Admission per device
+            if ($admissionForKit &&
+                    in_array($admissionForKit->getStatus(),
+                            [APIAdmission::STATUS_ACTIVE, APIAdmission::STATUS_ENROLLED, APIAdmission::STATUS_INCOMPLETE])) {
+                $activeAdmission = $admissionForKit;
+            }
+        }
+
+        if ($prescription->getId()) {
+            /*
+             * At this point we are sure that the KIT ID is not used, or it is used and corresponds to the participant, but it is also necessary to
+             * check
+             * another thing:
+             * There may exist more than one prescription for the same participant, so we must ensure that the KIT ID is not assigned to a different
+             * prescription
+             */
+            $prescriptionAdmissions = null;
+            if ($caseId) {
+                // Find the ADMISSIONs of the CASE (with the correct prescription ID)
+                $searchCondition = new StdClass();
+                $searchCondition->data_code = new StdClass();
+                $searchCondition->data_code->name = 'PRESCRIPTION_ID';
+                $searchCondition->data_code->value = $prescription->getId();
+                $prescriptionAdmissions = $api->case_admission_list($caseId, true, $subscription->getId(), json_encode($searchCondition));
+                if ($api->errorCode()) {
+                    throw new APIException($api->errorCode(), $api->errorMessage());
+                }
+                foreach ($prescriptionAdmissions as $a) {
+                    if (in_array($a->getStatus(), [APIAdmission::STATUS_ACTIVE, APIAdmission::STATUS_ENROLLED, APIAdmission::STATUS_INCOMPLETE])) {
+                        $activeAdmission = $a;
+                        break;
+                    } else {
+                        $finishedAdmissions++;
+                    }
+                }
+
+                if ($admissionForKit) {
+                    /*
+                     * One of the ADMISSIONs of the prescription must be the one found by the KIT ID. Otherwise it means that the KIT was used in
+                     * another
+                     * prescription of the same patient
+                     */
+                    $found = false;
+                    foreach ($prescriptionAdmissions as $a) {
+                        if ($a->getId() == $admissionForKit->getId()) {
+                            $found = true;
+                            break;
+                        }
+                    }
+                    if (!$found) {
+                        throw new KitException(ErrorInfo::KIT_ALREADY_USED);
+                    }
+                }
+            }
+        }
+        if ($admissionForKit &&
+                !in_array($admissionForKit->getStatus(), [APIAdmission::STATUS_ACTIVE, APIAdmission::STATUS_ENROLLED, APIAdmission::STATUS_INCOMPLETE])) {
+            // The ADMISSION exists and it is finished
+            $lc2Action = new LC2Action(LC2Action::ACTION_REDIRECT_TO_CASE);
+            $lc2Action->setCaseId($admissionForKit->getCaseId());
+            $lc2Action->setAdmissionId($admissionForKit->getId());
+            $programId ? $lc2Action->setProgramId($programId) : null;
+            $teamId ? $lc2Action->setTeamId($teamId) : null;
+            return $lc2Action;
+        }
+        // Everything looks right so far, but there is one last verification: There cannont be more ADMISSIONS for the prescription ID than
+        // permitted
+        // rounds
+        if ($finishedAdmissions >= $prescription->getRounds()) {
+            throw new KitException(ErrorInfo::MAX_ROUNDS_EXCEEDED);
+        }
+    }
+
+    if (!$activeAdmission && !$prescription) {
+        // It is not possible to create a new ADMISSION without the prescription information
+        throw new KitException(ErrorInfo::PRESCRIPTION_MISSING);
+    } elseif (!$activeAdmission) {
+        $tz_object = new DateTimeZone('UTC');
+        $datetime = new DateTime();
+        $datetime->setTimezone($tz_object);
+        $today = $datetime->format('Y\-m\-d');
+
+        if ($prescription && $prescription->getExpirationDate() && $prescription->getExpirationDate() < $today) {
+            throw new KitException(ErrorInfo::PRESCRIPTION_EXPIRED);
+        }
+
+        // The KIT ID is new. Create a new ADMISSION
+        $lc2Action = initializeAdmission($kitInfo, $prescription, $caseId, $subscription->getId(), $admissionFromPrescription);
+    } else {
+        // We have found an active ADMISSION for this Kit ID
+        $lc2Action = updateAdmission($activeAdmission, $kitInfo);
+        $lc2Action->setProgramId($activeAdmission->getSubscription()->getProgram()->getId());
+        $lc2Action->setTeamId($activeAdmission->getSubscription()->getTeam()->getId());
+    }
+
+    // Complete the action with the PROGRAM and TEAM information
+    $programId ? $lc2Action->setProgramId($programId) : null;
+    $teamId ? $lc2Action->setTeamId($teamId) : null;
+
+    return $lc2Action;
+}
+
+/**
+ *
+ * @param string $admissionId
+ * @param KitInfo $kitInfo
+ * @param APICase $caseByDevice
+ * @throws APIException
+ * @throws KitException
+ * @return APIAdmission
+ */
+function loadAdmission($admissionId, $kitInfo, $caseByDevice) {
+    $api = LinkcareSoapAPI::getInstance();
+
+    $admission = $api->admission_get($admissionId);
+    if ($api->errorCode()) {
+        throw new APIException($api->errorCode(), $api->errorMessage());
+    }
+    if (!$admission) {
+        throw new KitException(ErrorInfo::ADMISSION_NOT_FOUND);
+    }
+
+    if ($caseByDevice && $caseByDevice->getId() != $admission->getCaseId()) {
+        // There exists an ADMISSION for the KIT that correspond to a CASE different that the ADMISSION provided
+        throw new KitException(ErrorInfo::KIT_ALREADY_USED);
+    }
+
+    if ($caseByDevice) {
         $searchCondition = new StdClass();
         $searchCondition->data_code = new StdClass();
         $searchCondition->data_code->name = 'KIT_ID';
         $searchCondition->data_code->value = $kitInfo->getId();
-        $kitAdmissions = $api->case_admission_list($casesByDevice[0]->getId(), true, $subscription ? $subscription->getId() : null,
-                json_encode($searchCondition));
+        $kitAdmissions = $api->case_admission_list($caseByDevice->getId(), true, $admission->getSubscription()->getId(), json_encode($searchCondition));
         if ($api->errorCode()) {
             throw new APIException($api->errorCode(), $api->errorMessage());
         }
 
         $admissionForKit = count($kitAdmissions) > 0 ? $kitAdmissions[0] : null; // There can only exist one Admission per device
-        if ($admissionForKit &&
-                in_array($admissionForKit->getStatus(), [APIAdmission::STATUS_ACTIVE, APIAdmission::STATUS_ENROLLED, APIAdmission::STATUS_INCOMPLETE])) {
-            $activeAdmission = $admissionForKit;
+        if ($admissionForKit->getId() != $admission->getId()) {
+            throw new KitException(ErrorInfo::KIT_ALREADY_USED);
         }
     }
 
-    if ($prescription && $prescription->getId()) {
-        /*
-         * At this point we are sure that the KIT ID is not used, or it is used and corresponds to the participant, but it is alse necessary to check
-         * another thing:
-         * There may exist more than one prescription for the same participant, so we must ensure that the KIT ID is not assigned to a different
-         * prescription
-         */
-        $prescriptionAdmissions = null;
-        if ($caseId) {
-            // Find the ADMISSIONs of the CASE (with the correct prescription ID)
-            $searchCondition = new StdClass();
-            $searchCondition->data_code = new StdClass();
-            $searchCondition->data_code->name = 'PRESCRIPTION_ID';
-            $searchCondition->data_code->value = $prescription->getId();
-            $prescriptionAdmissions = $api->case_admission_list($caseId, true, $subscription->getId(), json_encode($searchCondition));
-            if ($api->errorCode()) {
-                throw new APIException($api->errorCode(), $api->errorMessage());
-            }
-            foreach ($prescriptionAdmissions as $a) {
-                if (in_array($a->getStatus(), [APIAdmission::STATUS_ACTIVE, APIAdmission::STATUS_ENROLLED, APIAdmission::STATUS_INCOMPLETE])) {
-                    $activeAdmission = $a;
-                    break;
-                } else {
-                    $finishedAdmissions++;
-                }
-            }
-
-            if ($admissionForKit) {
-                /*
-                 * One of the ADMISSIONs of the prescription must be the one found by the KIT ID. Otherwise it means that the KIT was used in another
-                 * prescription of the same patient
-                 */
-                $found = false;
-                foreach ($prescriptionAdmissions as $a) {
-                    if ($a->getId() == $admissionForKit->getId()) {
-                        $found = true;
-                        break;
-                    }
-                }
-                if (!$found) {
-                    throw new KitException(ErrorInfo::KIT_ALREADY_USED);
-                }
-            }
-        }
+    if ($admission->getStatus() == 'INCOMPLETE') {
+        // The patient information is not yet complete. Cannot assign KIT information to the admission
+        throw new KitException(ErrorInfo::ADMISSION_INCOMPLETE);
     }
 
-    if ($admissionForKit &&
-            !in_array($admissionForKit->getStatus(), [APIAdmission::STATUS_ACTIVE, APIAdmission::STATUS_ENROLLED, APIAdmission::STATUS_INCOMPLETE])) {
-        // The ADMISSION exists and it is finished
-        $lc2Action = new LC2Action(LC2Action::ACTION_REDIRECT_TO_CASE);
-        $lc2Action->setCaseId($admissionForKit->getCaseId());
-        $lc2Action->setAdmissionId($admissionForKit->getId());
-    } else {
-        if ($prescription) {
-            // Everything looks right so far, but there is one last verification: There cannont be more ADMISSIONS for the prescription ID than
-            // permitted
-            // rounds
-            if ($finishedAdmissions >= $prescription->getRounds()) {
-                throw new KitException(ErrorInfo::MAX_ROUNDS_EXCEEDED);
-            }
-        }
+    $alreadyInitialized = $admission->getStatus() != 'ENROLLED';
 
-        if (!$activeAdmission && !$prescription) {
-            // It is not possible to create a new ADMISSION without the prescription information
-            throw new KitException(ErrorInfo::PRESCRIPTION_MISSING);
-        } elseif (!$activeAdmission) {
-            $tz_object = new DateTimeZone('UTC');
-            $datetime = new DateTime();
-            $datetime->setTimezone($tz_object);
-            $today = $datetime->format('Y\-m\-d');
-
-            if ($prescription && $prescription->getExpirationDate() && $prescription->getExpirationDate() < $today) {
-                throw new KitException(ErrorInfo::PRESCRIPTION_EXPIRED);
-            }
-
-            // The KIT ID is new. Create a new ADMISSION
-            $lc2Action = createNewAdmission($kitInfo, $prescription, $caseId, $subscription->getId());
-        } else {
-            // We have found an active ADMISSION for this Kit ID
-            $lc2Action = updateAdmission($activeAdmission, $kitInfo);
-            $lc2Action->setProgramId($activeAdmission->getSubscription()->getProgram()->getId());
-            $lc2Action->setTeamId($activeAdmission->getSubscription()->getTeam()->getId());
-        }
-    }
-
-    if ($lc2Action) {
-        // Complete the action with the PROGRAM and TEAM information
-        $programId ? $lc2Action->setProgramId($programId) : null;
-        $teamId ? $lc2Action->setTeamId($teamId) : null;
-    }
-    return $lc2Action;
+    return [$admission, $alreadyInitialized];
 }
 
 /**
@@ -337,9 +418,10 @@ function findSubscription($prescription, $defaultProgramCode = null) {
  * @param KitInfo $kitInfo
  * @param Prescription $prescription
  * @param int $subscriptionId
+ * @param APIAdmission $admission (default = null) If not NULL, the function will initialize an existing ADMISSION
  * @return LC2Action
  */
-function createNewAdmission($kitInfo, $prescription, $caseId, $subscriptionId) {
+function initializeAdmission($kitInfo, $prescription, $caseId, $subscriptionId, $admission = null) {
     $lc2Action = new LC2Action();
     $api = LinkcareSoapAPI::getInstance();
     $isNewCase = false;
@@ -370,24 +452,32 @@ function createNewAdmission($kitInfo, $prescription, $caseId, $subscriptionId) {
 
     $lc2Action->setCaseId($caseId);
     $failed = false;
-    // Create an ADMISSION
-    $admission = $api->admission_create($caseId, $subscriptionId, null, null, true);
 
-    if (!$admission || $api->errorCode()) {
-        // An unexpected error happened while creating the ADMISSION: Delete the CASE
-        $failed = true;
-        $lc2Action->setActionType(LC2Action::ACTION_ERROR_MSG);
-        $lc2Action->setErrorMessage($api->errorMessage());
+    $admissionCreated = false;
+    if (!$admission) {
+        // Create an ADMISSION
+        $admission = $api->admission_create($caseId, $subscriptionId, null, null, true);
+
+        if (!$admission || $api->errorCode()) {
+            // An unexpected error happened while creating the ADMISSION: Delete the CASE
+            $failed = true;
+            $lc2Action->setActionType(LC2Action::ACTION_ERROR_MSG);
+            $lc2Action->setErrorMessage($api->errorMessage());
+            return $lc2Action;
+        }
+        if (!$admission->isNew()) {
+            // There already exists an active Admission for the patient. Cannot create a new Admission
+            $error = new ErrorInfo(ErrorInfo::ADMISSION_ACTIVE);
+            $lc2Action->setActionType(LC2Action::ACTION_ERROR_MSG);
+            $lc2Action->setErrorMessage($error->getErrorMessage());
+            return $lc2Action;
+        }
+        $admissionCreated = true;
+    } else {
+        // Initialize an existing ADMISSION
     }
 
     $lc2Action->setAdmissionId($admission->getId());
-    if (!$admission->isNew()) {
-        // There already exists an active Admission for the patient. Cannot create a new Admission
-        $error = new ErrorInfo(ErrorInfo::ADMISSION_ACTIVE);
-        $lc2Action->setActionType(LC2Action::ACTION_ERROR_MSG);
-        $lc2Action->setErrorMessage($error->getErrorMessage());
-        return $lc2Action;
-    }
 
     if (!$isNewCase) {
         // The CASE already existed, but we need to add the KIT_ID to his list of devices
@@ -417,7 +507,7 @@ function createNewAdmission($kitInfo, $prescription, $caseId, $subscriptionId) {
     }
 
     if ($failed) {
-        if ($admission) {
+        if ($admission && $admissionCreated) {
             $api->admission_delete($admission->getId());
         }
         if ($isNewCase) {
