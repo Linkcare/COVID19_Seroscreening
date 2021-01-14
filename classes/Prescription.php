@@ -15,6 +15,7 @@ class Prescription {
     private $program;
     private $rounds = 1;
     private $admissionId;
+    private $patientName;
     private $checkDigit = "";
     private $withCheckDigit;
 
@@ -35,6 +36,20 @@ class Prescription {
             // ePrescription with the ADMISSION information
             $vars = explode('=', $parts[0]);
             $this->admissionId = $vars[1];
+            foreach ($parts as $v) {
+                $param = explode('=', $v);
+                switch ($param[0]) {
+                    case 'tc' :
+                        $this->team = $param[1];
+                        break;
+                    case 'pc' :
+                        $this->program = $param[1];
+                        break;
+                    case 'n' :
+                        $this->patientName = $param[1];
+                        break;
+                }
+            }
             $this->valid = $this->admissionId != '';
         } else {
             $this->type = self::TYPE_E_PRESCRIPTION;
@@ -106,6 +121,10 @@ class Prescription {
 
     function getAdmissionId() {
         return $this->admissionId;
+    }
+
+    function getPatientName() {
+        return $this->patientName;
     }
 
     // **************************************************************

@@ -73,6 +73,7 @@ function processKit($kitInfo) {
     $caseId = null;
     $programId = null;
     $teamId = null;
+    $subscription = null;
 
     // Find out if there exists a patient assigned to the Kit ID
     $casesByDevice = $api->case_search("SEROSCREENING:" . $kitInfo->getId() . "");
@@ -183,7 +184,7 @@ function processKit($kitInfo) {
              * scanning a KitID that was previously used for another CASE
              */
             throw new KitException(ErrorInfo::KIT_ALREADY_USED);
-        } else {
+        } elseif ($caseByDevice) {
             $caseId = $caseByDevice->getId();
         }
 
@@ -268,6 +269,24 @@ function processKit($kitInfo) {
         // rounds
         if ($finishedAdmissions >= $prescription->getRounds()) {
             throw new KitException(ErrorInfo::MAX_ROUNDS_EXCEEDED);
+        }
+    } elseif ($caseByDevice) {
+        // We only have teh KIT_ID. Select the first admission of the CASE assigned to the KIT
+
+        $searchCondition = new StdClass();
+        $searchCondition->data_code = new StdClass();
+        $searchCondition->data_code->name = 'KIT_ID';
+        $searchCondition->data_code->value = $kitInfo->getId();
+        $kitAdmissions = $api->case_admission_list($caseByDevice->getId(), true, $subscription ? $subscription->getId() : null,
+                json_encode($searchCondition));
+        if ($api->errorCode()) {
+            throw new APIException($api->errorCode(), $api->errorMessage());
+        }
+
+        $admissionForKit = count($kitAdmissions) > 0 ? $kitAdmissions[0] : null; // There can only exist one Admission per device
+        if ($admissionForKit &&
+                in_array($admissionForKit->getStatus(), [APIAdmission::STATUS_ACTIVE, APIAdmission::STATUS_ENROLLED, APIAdmission::STATUS_INCOMPLETE])) {
+            $activeAdmission = $admissionForKit;
         }
     }
 
