@@ -178,6 +178,8 @@ class Prescription {
         $obj->expirationDate = $this->expirationDate;
         $obj->participantId = $this->participantId;
         $obj->rounds = $this->rounds;
+        $obj->type = $this->type;
+        $obj->patientName = $this->patientName;
         return json_encode($obj);
     }
 
