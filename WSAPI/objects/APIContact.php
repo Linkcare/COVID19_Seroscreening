@@ -400,15 +400,17 @@ class APIContact {
             $xml->createChildNode($dataNode, "gender", $this->getGender());
         }
 
-        $nameNode = $xml->createChildNode($parentNode, "name");
-        if ($this->getName() !== null) {
-            $xml->createChildNode($nameNode, "given_name", $this->getName());
-        }
-        if ($this->getFamilyName() !== null) {
-            $xml->createChildNode($nameNode, "family_name", $this->getFamilyName());
-        }
-        if ($this->getFamilyName2() !== null) {
-            $xml->createChildNode($nameNode, "family_name2", $this->getFamilyName2());
+        if ($this->getName() !== null || $this->getFamilyName() != null || $this->getFamilyName2() !== null) {
+            $nameNode = $xml->createChildNode($parentNode, "name");
+            if ($this->getName() !== null) {
+                $xml->createChildNode($nameNode, "given_name", $this->getName());
+            }
+            if ($this->getFamilyName() !== null) {
+                $xml->createChildNode($nameNode, "family_name", $this->getFamilyName());
+            }
+            if ($this->getFamilyName2() !== null) {
+                $xml->createChildNode($nameNode, "family_name2", $this->getFamilyName2());
+            }
         }
 
         if (!empty($this->getIdentifiers())) {
