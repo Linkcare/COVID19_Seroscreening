@@ -41,6 +41,20 @@
                     ?>:</b> <span id="prescriptionRounds"></span></li>
                   		</ul>
           			</div>
+          			
+          			<div id="personalPrescriptionInfo" style="display: none;">
+                  		<ul>
+                    		<li><b><?php
+                    echo (Localization::translate('Prescription.Program.Label'));
+                    ?>:</b> <span id="personalPrescriptionProgram"></span></li>
+                    		<li><b><?php
+                    echo (Localization::translate('Prescription.Team.Label'));
+                    ?>:</b> <span id="personalPrescriptionTeam"></span></li>
+                    <li><b><?php
+                    echo (Localization::translate('Prescription.PatientName.Label'));
+                    ?>:</b> <span id="personalPrescriptionPatientName"></span></li>
+                  		</ul>
+          			</div>
 
             		<input type="text" class="form-control" id="labelInput">
           	</div>
@@ -117,6 +131,7 @@
             $("#button-div").show();
 
             $("#prescriptionInfo").hide();
+            $("#personalPrescriptionInfo").hide();
             $("#labelInput").val("");
 
 		} else {
@@ -174,6 +189,7 @@ echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang())
             function(jsonPrescription){
                 if(jsonPrescription.success == 0) {
                     $("#prescriptionInfo").hide();
+                    $("#personalPrescriptionInfo").hide();
                     $("#labelInput").show();
                     $("#prescriptionError").show();
                     window.location.href='error.php?error=PRESCRIPTION_WRONG_FORMAT&return=prescription&culture=<?php
@@ -182,15 +198,47 @@ echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang())
                     ?>';
                 } else{
                     // Fill the prescription fields
-                    console.log(jsonPrescription);
-                    $("#prescriptionId").html(jsonPrescription.id);
-                    $("#prescriptionProgram").html(jsonPrescription.program);
-                    $("#prescriptionTeam").html(jsonPrescription.team);
-                    $("#prescriptionParticipantId").html(jsonPrescription.participantId);
-                    $("#prescriptionExpires").html(jsonPrescription.expirationDate);
-                    $("#prescriptionRounds").html(jsonPrescription.rounds);
+                    //console.log(jsonPrescription);
+                    if(jsonPrescription.type == <?php
 
-                    $("#prescriptionInfo").show();
+                    echo (Prescription::TYPE_E_PRESCRIPTION);
+                    ?>){
+                        //Prescription QR                        
+                        $("#prescriptionId").html(jsonPrescription.id);
+                        $("#prescriptionProgram").html(jsonPrescription.program);
+                        $("#prescriptionTeam").html(jsonPrescription.team);
+                        $("#prescriptionParticipantId").html(jsonPrescription.participantId);
+                        $("#prescriptionExpires").html(jsonPrescription.expirationDate);
+                        $("#prescriptionRounds").html(jsonPrescription.rounds);
+    
+                        $("#prescriptionInfo").show();                        
+
+                    } else if(jsonPrescription.type == <?php
+
+                    echo (Prescription::TYPE_PERSONAL);
+                    ?>){
+                        //Patient QR
+                        if(jsonPrescription.program != null){
+                            $("#personalPrescriptionProgram").html(jsonPrescription.program);
+                            $("#personalPrescriptionProgram").parent().show();
+                        } else {
+                        	$("#personalPrescriptionProgram").parent().hide();
+                        }
+                        if(jsonPrescription.team != null){
+                        	$("#personalPrescriptionTeam").html(jsonPrescription.team);
+                            $("#personalPrescriptionTeam").parent().show();
+                        } else {
+                        	$("#personalPrescriptionTeam").parent().hide();
+                        }
+                        if(jsonPrescription.patientName != null){
+                        	$("#personalPrescriptionPatientName").html(jsonPrescription.patientName);
+                            $("#personalPrescriptionPatientName").parent().show();
+                        } else {
+                        	$("#personalPrescriptionPatientName").parent().hide();
+                        }                                                
+
+                        $("#personalPrescriptionInfo").show();
+                    }
 
                     //Now that a prescription has been scanned, hide the rest of the page
                     $("#labelInput").hide();

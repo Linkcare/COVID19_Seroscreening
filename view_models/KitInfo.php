@@ -93,7 +93,7 @@ class KitInfo {
      * @return string
      */
     public function getManufacture_date() {
-        return $this->manufacture_date;
+        return explode(' ', $this->manufacture_date)[0];
     }
 
     /**

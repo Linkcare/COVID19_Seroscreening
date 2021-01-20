@@ -191,6 +191,24 @@ class LinkcareSoapAPI {
 
     /**
      *
+     * @param string $admissionId
+     * @return APIAdmission
+     */
+    function admission_get($admissionId) {
+        $admission = null;
+        $params = ["admission" => $admissionId];
+        $resp = $this->invoke('admission_get', $params);
+        if (!$resp->getErrorCode()) {
+            if ($result = simplexml_load_string($resp->getResult())) {
+                $admission = APIAdmission::parseXML($result);
+            }
+        }
+
+        return $admission;
+    }
+
+    /**
+     *
      * @param int $admissionId
      */
     function admission_delete($admissionId) {
