@@ -19,12 +19,22 @@ if ($dbConnResult === true) {
             if ($kit->getStatus() == KitInfo::STATUS_NOT_USED) {
                 /* The Kit status is: not used */
                 header('Content-Type: application/text');
-                echo 'prescription.php?culture=' . Localization::getLang();
+                if ($kit->getPrescriptionString() == '') {
+                    // Show the next view asking for the prescription information
+                    echo 'prescription.php?culture=' . Localization::getLang();
+                } else {
+                    // We already know the PRESCRIPTION information. There is no need to ask for it.
+                    echo $kit->generateURLtoLC2() . "&prescription_id=" . urlencode($kit->getPrescriptionString());
+                }
             } else if (in_array($kit->getStatus(),
                     [KitInfo::STATUS_ASSIGNED, KitInfo::STATUS_PROCESSING, KitInfo::STATUS_PROCESSING_5MIN, KitInfo::STATUS_INSERT_RESULTS])) {
                 $kit->storeTracking(KitInfo::ACTION_PROCESSED, '');
                 header('Content-Type: application/text');
-                echo $kit->generateURLtoLC2();
+                $url = $kit->generateURLtoLC2();
+                if ($kit->getPrescriptionString()) {
+                    $url .= "&prescription_id=" . urlencode($kit->getPrescriptionString());
+                }
+                echo $url;
             }
             break;
         case 'create_admission' :

@@ -20,6 +20,15 @@ if ($dbConnResult !== true) {
             // Disable the functionality at the moment
             // $kit->changeStatus(KitInfo::STATUS_DISCARDED);
         }
+
+        if (isset($_GET['adm']) && trim($_GET['adm']) != '') {
+            /*
+             * If an specific admission Id, has been provided, then the KIT must be associated to that ADMISSION. Generate a PRESCRIPTION with the
+             * ADMISSION ID
+             */
+            $kit->setPrescriptionString(urlencode('adm=' . trim($_GET['adm'])));
+        }
+
         /* Store a tracking of all kits scanned */
         $kit->storeTracking(KitInfo::ACTION_SCANNED, '');
         switch ($kit->getStatus()) {

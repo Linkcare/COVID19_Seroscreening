@@ -215,7 +215,7 @@ echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang())
 
                     } else if(jsonPrescription.type == <?php
 
-                    echo (Prescription::TYPE_PERSONAL);
+                    echo (Prescription::TYPE_ADMISSION);
                     ?>){
                         //Patient QR
                         if(jsonPrescription.program != null){

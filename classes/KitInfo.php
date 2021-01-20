@@ -25,7 +25,7 @@ class KitInfo {
     private $status;
     private $programCode;
     private $instance_url;
-    private $prescriptionId;
+    private $prescriptionString;
 
     /**
      * Returns the corresponding kit based in the id that is obtained from the url
@@ -143,8 +143,8 @@ class KitInfo {
      *
      * @return string
      */
-    public function getPrescriptionId() {
-        return $this->prescriptionId;
+    public function getPrescriptionString() {
+        return $this->prescriptionString;
     }
 
     /* Set methods */
@@ -215,10 +215,10 @@ class KitInfo {
 
     /**
      *
-     * @param string $instance_url
+     * @param string $prescriptionString
      */
-    public function setPrescriptionId($prescriptionId) {
-        $this->prescriptionId = $prescriptionId;
+    public function setPrescriptionString($prescriptionString) {
+        $this->prescriptionString = $prescriptionString;
     }
 
     /* Other methods */
@@ -287,9 +287,9 @@ class KitInfo {
     /**
      * Generates an entry in the table KIT_TRACKING to know who is creating Admissions in Linkcare with a KIT_ID
      *
-     * @param string $prescriptionId
+     * @param string $prescriptionString
      */
-    public function storeTracking($action, $prescriptionId) {
+    public function storeTracking($action, $prescriptionString) {
         if (!$GLOBALS["KIT_TRACKING"]) {
             return;
         }
@@ -315,7 +315,7 @@ class KitInfo {
         $arrVariables[':kitId'] = $this->getId();
         $arrVariables[':kitStatus'] = $this->getStatus();
         $arrVariables[':actionType'] = $action;
-        $arrVariables[':prescriptionId'] = $prescriptionId;
+        $arrVariables[':prescriptionId'] = $prescriptionString;
         $arrVariables[':ipAddress'] = $ipAddress;
         $arrVariables[':targetUrl'] = $this->getInstance_url();
         $arrVariables[':countryName'] = $ipdat ? $ipdat->geoplugin_countryName : null;
