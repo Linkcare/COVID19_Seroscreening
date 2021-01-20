@@ -128,6 +128,7 @@ function processKit($kitInfo) {
         }
 
         $foundAdmission = $kitAdmissions[0]; // There can only exist one Admission per device
+        $alreadyInitialized = true;
     }
 
     if ($foundAdmission &&
