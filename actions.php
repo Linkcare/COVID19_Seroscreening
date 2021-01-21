@@ -19,7 +19,12 @@ if ($dbConnResult === true) {
             if ($kit->getStatus() == KitInfo::STATUS_NOT_USED) {
                 /* The Kit status is: not used */
                 header('Content-Type: application/text');
-                echo 'prescription.php?culture=' . Localization::getLang();
+                if (isset($_POST['lang'])) {
+                    $language = $_POST['lang'];
+                } else {
+                    $language = Localization::getLang();
+                }
+                echo 'prescription.php?culture=' . $language;
             } else if (in_array($kit->getStatus(),
                     [KitInfo::STATUS_ASSIGNED, KitInfo::STATUS_PROCESSING, KitInfo::STATUS_PROCESSING_5MIN, KitInfo::STATUS_INSERT_RESULTS])) {
                 $kit->storeTracking(KitInfo::ACTION_PROCESSED, '');

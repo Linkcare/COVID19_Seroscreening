@@ -151,7 +151,10 @@ if ($kit->getStatus() == KitInfo::STATUS_NOT_USED) {
         	$("#btnProcessKit").click(function (e) {
                 $.post(
                 	'actions.php',
-                    {action: 'process_kit'},
+                    {action: 'process_kit',lang: '<?php
+
+                    echo (Localization::getLang());
+                    ?>'},
                     function(targetUrl){
                         window.location.href = targetUrl;
                     }
