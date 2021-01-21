@@ -1,7 +1,7 @@
 <?php
 
 class Localization {
-    const SUPPORTED_LOCALES = ["en", "ca", "es", "fr", "zh"];
+    const SUPPORTED_LOCALES = ["en", "ca", "es", "fr", "it", "zh"];
     const DB_PREFIX = "KitInfo.Language.";
 
     // Private members
