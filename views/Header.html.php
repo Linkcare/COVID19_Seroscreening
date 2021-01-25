@@ -51,29 +51,29 @@
             for ($i = 0; $i < sizeof(Localization::SUPPORTED_LOCALES); $i++) {
                 $url = substr($_SERVER['REQUEST_URI'], 0, strpos($_SERVER['REQUEST_URI'], "/?"));
                 $langUrl = Localization::SUPPORTED_LOCALES[$i];
-
-                if ($id = $_GET['id']) {
-                    echo ('<li class="nav-item"><a class="nav-link" href="' . $url . '?id=' . $id . '&culture=' . $langUrl . '">' .
-                            Localization::translateLanguage($i) . '</a></li>');
-                } else {
-                    // If there is no id sent through GET, we might come from Prescription, meaning we should check for other GET fields
-                    if (isset($_GET['error'])) {
-                        $errorGet = "&error=" . $_GET['error'];
-                    } else {
-                        $errorGet = "";
+                $getParams = "?";
+                foreach ($_GET as $key => $value) {
+                    if ($key == "culture") {
+                        $value = $langUrl;
                     }
-                    if (isset($_GET['return'])) {
-                        $returnGet = "&return=" . $_GET['return'];
+                    if ($getParams == "?") {
+                        $getParams .= $key . "=" . $value;
                     } else {
-                        $returnGet = "";
+                        $getParams .= "&" . $key . "=" . $value;
                     }
-
-                    echo ('<li class="nav-item"><a class="nav-link" href="' . $url . '?culture=' . $langUrl . $errorGet . $returnGet . '">' .
-                            Localization::translateLanguage($i) . '</a></li>');
                 }
+                if (!array_key_exists('culture', $_GET)) {
+                    if ($getParams == "?") {
+                        $getParams .= "culture=" . $langUrl;
+                    } else {
+                        $getParams .= "&culture=" . $langUrl;
+                    }
+                }
+                echo ('<li class="nav-item"><a class="nav-link" href="' . $url . $getParams . '">' . Localization::translateLanguage($i) . '</a></li>');
             }
             ?>
             
         	</ul>
   		</div>
 	</nav> 
+	
