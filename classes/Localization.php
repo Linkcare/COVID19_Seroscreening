@@ -86,9 +86,9 @@ class Localization {
         $arrVariables[":descGroup"] = $group;
         $arrVariables[":lang"] = self::$locale;
         $arrVariables[":key"] = $key;
-        $sql = "SELECT 
+        $sql = "SELECT
                     dt.DESCRIPTION
-                FROM 
+                FROM
                     DESCRIPTION_TRANSLATIONS dt
                 LEFT JOIN DESCRIPTIONS d ON dt.ID_DESCRIPTION = d.ID_DESCRIPTION
                 WHERE d.DESCRIPTION_GROUP = :descGroup AND dt.ISO2_LANGUAGE IN (:lang, 'en') AND d.DESCRIPTION_KEY = :key

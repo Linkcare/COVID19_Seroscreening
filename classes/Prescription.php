@@ -3,7 +3,7 @@
 class Prescription {
     // Prescription types
     const TYPE_E_PRESCRIPTION = 1;
-    const TYPE_PERSONAL = 2;
+    const TYPE_ADMISSION = 2;
 
     // Class members
     private $valid = false;
@@ -32,7 +32,7 @@ class Prescription {
         }
         $parts = explode(';', $str);
         if (startsWith('adm=', $str)) {
-            $this->type = self::TYPE_PERSONAL;
+            $this->type = self::TYPE_ADMISSION;
             // ePrescription with the ADMISSION information
             $vars = explode('=', $parts[0]);
             $this->admissionId = $vars[1];
