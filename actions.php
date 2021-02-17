@@ -29,7 +29,7 @@ if ($dbConnResult === true) {
                     echo 'prescription.php?culture=' . $language;
                 } else {
                     // We already know the PRESCRIPTION information. There is no need to ask for it.
-                    echo $kit->generateURLtoLC2() . "&prescription_id=" . urlencode($kit->getPrescriptionString());
+                    echo $kit->generateURLtoLC2() . "&prescription=" . urlencode($kit->getPrescriptionString());
                 }
             } else if (in_array($kit->getStatus(),
                     [KitInfo::STATUS_ASSIGNED, KitInfo::STATUS_PROCESSING, KitInfo::STATUS_PROCESSING_5MIN, KitInfo::STATUS_INSERT_RESULTS])) {
@@ -37,20 +37,22 @@ if ($dbConnResult === true) {
                 header('Content-Type: application/text');
                 $url = $kit->generateURLtoLC2();
                 if ($kit->getPrescriptionString()) {
-                    $url .= "&prescription_id=" . urlencode($kit->getPrescriptionString());
+                    $url .= "&prescription=" . urlencode($kit->getPrescriptionString());
                 }
                 echo $url;
             }
             break;
         case 'create_admission' :
             $prescriptionStr = $_POST['prescription'];
-            $kit->storeTracking(KitInfo::ACTION_PROCESSED, $prescriptionStr);
-            $targetUrl = $kit->generateURLtoLC2() . "&prescription_id=" . urlencode($prescriptionStr);
+            $participantRef = $_POST['participant'];
+            $kit->storeTracking(KitInfo::ACTION_PROCESSED, $prescriptionStr ? $prescriptionStr : $participantRef);
+            $targetUrl = $kit->generateURLtoLC2() . "&prescription=" . urlencode($prescriptionStr) . "&participant=" . urlencode($participantRef);
             header('Content-Type: application/text');
             echo $targetUrl;
             break;
         case 'set_prescription' :
-            $prescription = new Prescription($_POST["prescription"]);
+            // PEDRO REMOVE
+            $prescription = new Prescription($_POST["prescription"], $_POST["participant"]);
             header('Content-Type: application/json');
             echo $prescription->toJSON();
             break;

@@ -173,12 +173,14 @@ class LinkcareSoapAPI {
      * @param string $date
      * @param int $team
      * @param boolean $allow_incomplete
-     * @param APIAdmission
+     * @param StdClass $setupValues JSON object with a list of fields to store in the ADMISSION SETUP stage
+     * @return APIAdmission
      */
-    function admission_create($caseId, $subscriptionId, $date, $team = null, $allowIncomplete = false) {
+    function admission_create($caseId, $subscriptionId, $date, $team = null, $allowIncomplete = false, $setupValues = null) {
         $admission = null;
+        $strValues = is_object($setupValues) ? json_encode($setupValues) : null;
         $params = ["case" => $caseId, "subscription" => $subscriptionId, "date" => $date, "team" => $team,
-                "allow_incomplete" => $allowIncomplete ? "1" : ""];
+                "allow_incomplete" => $allowIncomplete ? "1" : "", "setup_values" => $strValues];
         $resp = $this->invoke('admission_create', $params);
         if (!$resp->getErrorCode()) {
             if ($result = simplexml_load_string($resp->getResult())) {

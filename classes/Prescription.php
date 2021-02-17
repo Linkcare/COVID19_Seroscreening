@@ -1,86 +1,73 @@
 <?php
 
 class Prescription {
-    // Prescription types
-    const TYPE_E_PRESCRIPTION = 1;
-    const TYPE_ADMISSION = 2;
-
     // Class members
     private $valid = false;
     private $type;
-    private $id;
-    private $participantId;
-    private $expirationDate;
-    private $team;
-    private $program;
-    private $rounds = 1;
-    private $admissionId;
-    private $patientName;
+    /**
+     * prescriptionData is a JSON object that can contain the following properties (all properties are optional):
+     * <ul>
+     * <li>id</li>
+     * <li>participant</li>
+     * <li>expiration</li>
+     * <li>team</li>
+     * <li>program</li>
+     * <li>rounds (default = 0)</li>
+     * <li>admission</li>
+     * <li>patientName</li>
+     * </ul>
+     *
+     * @var StdClass
+     */
+    private $prescriptionData;
     private $checkDigit = "";
     private $withCheckDigit;
 
     /**
      *
-     * @param string $str Semicolon separated string with the information aobut the prescription
+     * @param string $prescriptionStr Semicolon separated string with the information aobut the prescription
      * @param boolean $allowParticipantId (default = false) If true, the value in $str can be a single value that will be interpreted as the
      *        ParticipantId
      */
-    function __construct($str = null, $allowParticipantId = false) {
+    function __construct($prescriptionStr = null, $participant = null) {
         $this->withCheckDigit = $GLOBALS['QR_WITH_CHECK_DIGIT'];
-        if (!$str) {
+        $this->prescriptionData = new StdClass();
+        $this->prescriptionData->rounds = 0;
+
+        if (!$prescriptionStr && !$participant) {
             return;
         }
-        $parts = explode(';', $str);
-        if (startsWith('adm=', $str)) {
-            $this->type = self::TYPE_ADMISSION;
+        if (startsWith('adm=', $prescriptionStr)) {
+            $parts = explode(';', $prescriptionStr);
             // ePrescription with the ADMISSION information
             $vars = explode('=', $parts[0]);
-            $this->admissionId = $vars[1];
+            $this->prescriptionData->admission = $vars[1];
             foreach ($parts as $v) {
                 $param = explode('=', $v);
                 switch ($param[0]) {
                     case 'tc' :
-                        $this->team = $param[1];
+                        $this->prescriptionData->team = $param[1];
                         break;
                     case 'pc' :
-                        $this->program = $param[1];
+                        $this->prescriptionData->program = $param[1];
                         break;
                     case 'n' :
-                        $this->patientName = $param[1];
+                        $this->prescriptionData->patientName = $param[1];
                         break;
                 }
             }
-            $this->valid = $this->admissionId != '';
+            $this->valid = $this->prescriptionData->admission != '';
         } else {
-            $this->type = self::TYPE_E_PRESCRIPTION;
-            $parts = explode(';', $str);
-            if (count($parts) == 1) {
+            if ($prescriptionStr) {
+                $pd = json_decode(base64_decode($prescriptionStr));
+                if ($pd) {
+                    $this->prescriptionData = $pd;
+                    $this->valid = trim($pd->id) && trim($pd->program);
+                }
+            } elseif ($participant) {
                 // Old format with only participantId
-                $this->participantId = $str;
-                $this->valid = $allowParticipantId;
-            } else {
-                $ix = 0;
-                if ($this->withCheckDigit) {
-                    // The Prescription has a check digit at the begining of the string
-                    $this->checkDigit = count($parts) > $ix ? $parts[$ix] : nil;
-                    $ix++;
-                }
-                $this->id = count($parts) > $ix ? $parts[$ix] : nil;
-                $ix++;
-                $this->team = count($parts) > $ix ? $parts[$ix] : nil;
-                $ix++;
-                $this->program = count($parts) > $ix ? $parts[$ix] : nil;
-                $ix++;
-                $this->participantId = count($parts) > $ix ? $parts[$ix] : nil;
-                $ix++;
-                $this->expirationDate = count($parts) > $ix ? $parts[$ix] : nil;
-                $ix++;
-                $this->rounds = count($parts) > $ix ? max(intval($parts[$ix]), 1) : 1;
-                $this->valid = $this->id && $this->program && $this->participantId && $this->expirationDate;
-                if ($this->withCheckDigit) {
-                    // Verify the check digit
-                    $this->valid = $this->valid && $this->validateCheckDigit($str);
-                }
+                $this->prescriptionData->participant = $participant;
+                $this->valid = true;
             }
         }
     }
@@ -93,65 +80,73 @@ class Prescription {
     }
 
     function getId() {
-        return $this->id;
+        return $this->prescriptionData->id;
     }
 
     function getProgram() {
-        return $this->program;
+        return $this->prescriptionData->program;
     }
 
     function getTeam() {
-        return $this->team;
+        return $this->prescriptionData->team;
     }
 
     function getExpirationDate() {
-        if ($this->expirationDate) {
-            return $this->formatDate($this->expirationDate);
+        if ($this->prescriptionData->expiration) {
+            return $this->formatDate($this->prescriptionData->expiration);
         }
         return null;
     }
 
     function getParticipantId() {
-        return $this->participantId;
+        return $this->prescriptionData->participant;
     }
 
     function getRounds() {
-        return $this->rounds;
+        return $this->prescriptionData->rounds;
     }
 
     function getAdmissionId() {
-        return $this->admissionId;
+        return $this->prescriptionData->admission;
     }
 
     function getPatientName() {
-        return $this->patientName;
+        return $this->prescriptionData->patientName;
+    }
+
+    /**
+     *
+     * @return StdClass
+     */
+    function getPrescriptionData() {
+        return $this->prescriptionData;
     }
 
     // **************************************************************
     // SETTERS
     // **************************************************************
     function setId($value) {
-        $this->id = $value;
+        $this->prescriptionData->id = $value;
     }
 
     function setProgram($value) {
-        $this->program = $value;
+        $this->prescriptionData->program = $value;
     }
 
     function setTeam($value) {
-        $this->team = $value;
+        $this->prescriptionData->team = $value;
     }
 
     function setExpirationDate($value) {
-        $this->expirationDate = $value;
+        $this->prescriptionData->expiration = $value;
     }
 
     function setParticipantId($value) {
-        $this->participantId = $value;
+        $this->prescriptionData->participant = $value;
     }
 
     function setRounds($value) {
-        $this->rounds = max(intval($value), 1);
+        $this->prescriptionData->rounds = max(intval($value), 1);
     }
 
     // **************************************************************
@@ -171,15 +166,17 @@ class Prescription {
      */
     public function toJSON() {
         $obj = new StdClass();
+        $obj->id = $this->prescriptionData->id;
+        $obj->program = $this->prescriptionData->program;
+        $obj->team = $this->prescriptionData->team;
+        $obj->expirationDate = $this->prescriptionData->expiration;
+        $obj->participantId = $this->prescriptionData->participant;
+        $obj->rounds = $this->prescriptionData->rounds;
+        $obj->patientName = $this->prescriptionData->patientName;
+        $obj->admissionId = $this->prescriptionData->admission;
+
         $obj->success = $this->valid ? 1 : 0;
-        $obj->id = $this->id;
-        $obj->program = $this->program;
-        $obj->team = $this->team;
-        $obj->expirationDate = $this->expirationDate;
-        $obj->participantId = $this->participantId;
-        $obj->rounds = $this->rounds;
         $obj->type = $this->type;
-        $obj->patientName = $this->patientName;
         return json_encode($obj);
     }
 
@@ -190,16 +187,7 @@ class Prescription {
      * @return string
      */
     public function generateQR() {
-        $parts = [];
-        $parts[] = $this->id;
-        $parts[] = $this->team;
-        $parts[] = $this->program;
-        $parts[] = $this->participantId;
-        $parts[] = $this->expirationDate;
-        $parts[] = $this->rounds;
-
-        $str = implode(";", $parts);
-        return $this->calculateCheckDigit($str) . ";" . $str;
+        return base64_encode(json_encode($this->prescriptionData));
     }
 
     // **************************************************************
@@ -252,20 +240,5 @@ class Prescription {
         $checkCodePoint = ($n - $remainder) % $n;
 
         return $LUHN_CHARACTERS[$checkCodePoint];
-    }
-
-    /**
-     * Returns true if the string provided has a valid check digit
-     * The string should have the following format: "dc;str", where:
-     * - dc = is the check digit calculated for str
-     * - str = the string for which the check digit is calculated
-     *
-     * @param string $str
-     * @return boolean
-     */
-    private function validateCheckDigit($str) {
-        $parts = explode(";", $str, 2);
-        $cd = $parts[0];
-        return $cd == $this->calculateCheckDigit($parts[1]);
     }
 }

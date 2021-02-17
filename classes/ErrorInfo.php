@@ -4,6 +4,7 @@ class ErrorInfo {
     /* Error codes */
     const DB_CONNECTION_ERROR = "DB_CONNECTION_ERROR";
     const INVALID_KIT = "INVALID_KIT";
+    const KIT_EXPIRED = "KIT_EXPIRED";
     const INVALID_STATUS = "INVALID_STATUS";
     const KIT_ALREADY_USED = "KIT_ALREADY_USED";
     const MAX_ROUNDS_EXCEEDED = "MAX_ROUNDS_EXCEEDED";

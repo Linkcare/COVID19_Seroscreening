@@ -26,6 +26,7 @@ class KitInfo {
     private $programCode;
     private $instance_url;
     private $prescriptionString;
+    private $participantRef;
 
     /**
      * Returns the corresponding kit based in the id that is obtained from the url
@@ -147,6 +148,14 @@ class KitInfo {
         return $this->prescriptionString;
     }
 
+    /**
+     *
+     * @return string
+     */
+    public function getParticipantRef() {
+        return $this->participantRef;
+    }
+
     /* Set methods */
 
     /**
@@ -219,6 +228,14 @@ class KitInfo {
      */
     public function setPrescriptionString($prescriptionString) {
         $this->prescriptionString = $prescriptionString;
+    }
+
+    /**
+     *
+     * @param string $participantRef
+     */
+    public function setParticipantRef($participantRef) {
+        $this->participantRef = $participantRef;
     }
 
     /* Other methods */

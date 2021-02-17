@@ -73,6 +73,14 @@ function processKit($kitInfo) {
     $teamId = null;
     $subscription = null;
 
+    $tz_object = new DateTimeZone('UTC');
+    $datetime = new DateTime();
+    $datetime->setTimezone($tz_object);
+    $today = $datetime->format('Y\-m\-d');
+    if ($kitInfo->getExp_date() && $kitInfo->getExp_date() < $today) {
+        throw new KitException(ErrorInfo::KIT_EXPIRED);
+    }
+
     // Find out if there exists a patient assigned to the Kit ID
     $casesByDevice = $api->case_search("SEROSCREENING:" . $kitInfo->getId() . "");
     if (!empty($casesByDevice)) {
@@ -86,8 +94,8 @@ function processKit($kitInfo) {
      * The prescription information generally is provided only when creating a new ADMISSION.
      * If it is not provided, it means that we are looking for an existing ADMISSION than can be found using the KIT_ID
      */
-    if (trim($kitInfo->getPrescriptionString()) != '') {
-        $prescription = new Prescription($kitInfo->getPrescriptionString(), true);
+    if (trim($kitInfo->getPrescriptionString()) != '' || trim($kitInfo->getParticipantRef())) {
+        $prescription = new Prescription($kitInfo->getPrescriptionString(), $kitInfo->getParticipantRef());
         if (!$prescription->isValid()) {
             throw new KitException(ErrorInfo::PRESCRIPTION_WRONG_FORMAT);
         }
@@ -95,14 +103,18 @@ function processKit($kitInfo) {
 
     $alreadyInitialized = false;
 
-    if ($prescription && $prescription->getType() == Prescription::TYPE_ADMISSION) {
+    if ($prescription && $prescription->getExpirationDate() && $prescription->getExpirationDate() < $today) {
+        throw new KitException(ErrorInfo::PRESCRIPTION_EXPIRED);
+    }
+
+    if ($prescription && $prescription->getAdmissionId()) {
         // The prescription contains information about the ADMISSION that should be used
         list($foundAdmission, $alreadyInitialized) = loadExistingAdmission($prescription->getAdmissionId(), $kitInfo, $caseByDevice);
         $subscription = $foundAdmission->getSubscription();
         $existingCaseId = $foundAdmission->getCaseId();
         $programId = $subscription->getProgram()->getId();
         $teamId = $subscription->getTeam()->getId();
-    } elseif ($prescription && $prescription->getType() == Prescription::TYPE_E_PRESCRIPTION) {
+    } elseif ($prescription) {
 
         list($foundAdmission, $subscription, $existingCaseId) = loadAdmissionFromPrescription($kitInfo, $prescription, $caseByDevice);
         /* If we finally find an existing a n ADMISSION from the PRESCRIPTION information, it must be initialized when it was created */
@@ -151,6 +163,9 @@ function processKit($kitInfo) {
          * - There exists an ADMISSION for the prescption provided, but it has not been initialized yet with the KIT information. This situation
          * happens when the ADMISSION was created by the PARTICIPANT and now we are adding the KIT information
          */
+        if (!$subscription) {
+            throw new KitException(ErrorInfo::SUBSCRIPTION_NOT_FOUND);
+        }
         $lc2Action = initializeAdmission($kitInfo, $prescription, $existingCaseId, $subscription->getId(), $foundAdmission);
     } else {
         // The ADMISSION for the KIT exists and it has already been initialized
@@ -386,7 +401,7 @@ function loadAdmissionFromPrescription($kitInfo, $prescription, $caseByDevice) {
          * permitted
          * rounds
          */
-        if ($finishedAdmissions >= $prescription->getRounds()) {
+        if ($prescription->getRounds() > 0 && $finishedAdmissions >= $prescription->getRounds()) {
             throw new KitException(ErrorInfo::MAX_ROUNDS_EXCEEDED);
         }
     }
@@ -498,7 +513,7 @@ function initializeAdmission($kitInfo, $prescription, $caseId, $subscriptionId, 
     $admissionCreated = false;
     if (!$admission) {
         // Create an ADMISSION
-        $admission = $api->admission_create($caseId, $subscriptionId, null, null, true);
+        $admission = $api->admission_create($caseId, $subscriptionId, null, null, true, $prescription ? $prescription->getPrescriptionData() : null);
 
         if (!$admission || $api->errorCode()) {
             // An unexpected error happened while creating the ADMISSION: Delete the CASE
@@ -533,7 +548,7 @@ function initializeAdmission($kitInfo, $prescription, $caseId, $subscriptionId, 
 
     try {
         createKitInfoTask($admission->getId(), $kitInfo);
-        createPrescriptionInfoTask($admission->getId(), $prescription);
+        // createPrescriptionInfoTask($admission->getId(), $prescription);
         list($taskId, $formId) = createRegisterKitTask($admission->getId());
         $lc2Action->setTaskId($taskId);
         if ($formId) {
@@ -748,6 +763,8 @@ function createKitInfoTask($admissionId, $kitInfo) {
 }
 
 /**
+ * DEPRECATED!!! Now the prescription INFO is passed as 'setup_values' to admission_create()<br>
+ *
  * Inserts a "PRESCRIPTION_INFO" TASK in the ADMISSION and fills its questions with prescription Information
  * Return the ID of the inserted TASK
  *
@@ -908,12 +925,13 @@ $kitInfo = new KitInfo();
 error_reporting(0);
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $kitInfo->setId($_POST["kit_id"]);
-    $kitInfo->setPrescriptionString(urldecode($_POST["prescription_id"]));
     $kitInfo->setBatch_number($_POST["batch_number"]);
     $kitInfo->setManufacture_place($_POST["manufacture_place"]);
     $kitInfo->setManufacture_date($_POST["manufacture_date"]);
     $kitInfo->setExp_date($_POST["expiration_date"]);
     $kitInfo->setProgramCode($_POST["program"]);
+    $kitInfo->setPrescriptionString(urldecode($_POST["prescription"]));
+    $kitInfo->setParticipantRef(urldecode($_POST["participant"]));
     header('Content-type: application/json');
     echo service_dispatch_kit($_POST["token"], $kitInfo);
 }

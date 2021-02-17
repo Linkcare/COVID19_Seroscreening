@@ -14,7 +14,7 @@
         echo (Localization::translate('Prescription.Title'));
         ?></b></h4>
 
-                <label id="label-text" for="labelInput"><?php
+                <label id="label-text" for="participant_ref"><?php
 
                 echo (Localization::translate('Prescription.Label'));
                 ?>:</label>
@@ -56,7 +56,8 @@
                   		</ul>
           			</div>
 
-            		<input type="text" class="form-control" id="labelInput">
+            		<input type="text" class="form-control" id="participant_ref">
+            		<input type="hidden" id="qr_code">
           	</div>
 
           	<div id="info-div">
@@ -106,14 +107,14 @@
 	/* Hide the qr-scanner div in order to show it when it's requested */
 	$('#div-qr-video').hide();
 
-	/* The submit button will be started dinamically and the prescription_id added from the input */
+	/* The submit button will be started dinamically and the prescription added from the input */
 	$("#btnSubmit").click(function (e) {
-		var prescriptionStr = $("#labelInput").val();
-		//window.location.href = kitId + "&prescription_id=" + encodeURIComponent(prescriptionStr);
+		var prescriptionStr = $("#qr_code").val();
+		var participant_ref = $("#participant_ref").val();
 
         $.post(
         	'actions.php',
-            {action: 'create_admission', prescription: prescriptionStr},
+            {action: 'create_admission', prescription: prescriptionStr, participant: participant_ref},
             function(targetUrl){
                 window.location.href = targetUrl;
             }
@@ -121,18 +122,21 @@
 	});
 
 	$("#back-arrow").click(function (e) {
-		if($("#labelInput").is(":hidden")){
-			//If the labelInput was hidden, then we are showing the scanned prescription information
+		if($("#participant_ref").is(":hidden")){
+			//If the participant_ref was hidden, then we are showing the scanned prescription information
 			// then we will want to go back to the previous status where we were showing the other fields
 			// and clean the input, while hidding the prescription information
-			$("#labelInput").show();
+            $("#prescriptionInfo").hide();
+            $("#personalPrescriptionInfo").hide();
+
+            $("#participant_ref").val("");
+			$("#participant_ref").show();
             $("#label-text").show();
             $("#info-div").show();
             $("#button-div").show();
+    	    var submit = $("#btnSubmit");
+    		submit.prop('disabled', !$("#participant_ref").val().length);
 
-            $("#prescriptionInfo").hide();
-            $("#personalPrescriptionInfo").hide();
-            $("#labelInput").val("");
 
 		} else {
 			//Else we want to go back to the index, meaning we are showing the fields and no prescription has been scanned
@@ -149,11 +153,11 @@ echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang())
 	$(document).ready(function() {
 	    var submit = $("#btnSubmit");
 	    submit.prop('disabled', true);
-
-	    $("#labelInput").on('input change', function() {
+				
+	    $("#participant_ref").on('input change', function() {
 	        submit.prop('disabled', !$(this).val().length);
 	        $("#prescriptionError").hide();
-	        $("#labelInput").css( "background-color", "" );
+	        $("#participant_ref").css( "background-color", "" );
     	});
 	});
 </script>
@@ -168,7 +172,7 @@ echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang())
     /* Variables from the html */
 
     const video = document.getElementById('qr-video');
-    const camQrResult = document.getElementById('labelInput');
+    const camQrResult = document.getElementById('qr_code');
     const camError = document.getElementById('cam-errors');
     const submitButton = document.getElementById('btnSubmit');
 
@@ -187,10 +191,10 @@ echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang())
 			'actions.php',
             {action: 'set_prescription', prescription: result},
             function(jsonPrescription){
-                if(jsonPrescription.success == 0) {
+                if(jsonPrescription.success == 0 || jsonPrescription.success == undefined) {
                     $("#prescriptionInfo").hide();
                     $("#personalPrescriptionInfo").hide();
-                    $("#labelInput").show();
+                    $("#participant_ref").show();
                     $("#prescriptionError").show();
                     window.location.href='error.php?error=PRESCRIPTION_WRONG_FORMAT&return=prescription&culture=<?php
 
@@ -199,24 +203,7 @@ echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang())
                 } else{
                     // Fill the prescription fields
                     //console.log(jsonPrescription);
-                    if(jsonPrescription.type == <?php
-
-                    echo (Prescription::TYPE_E_PRESCRIPTION);
-                    ?>){
-                        //Prescription QR                        
-                        $("#prescriptionId").html(jsonPrescription.id);
-                        $("#prescriptionProgram").html(jsonPrescription.program);
-                        $("#prescriptionTeam").html(jsonPrescription.team);
-                        $("#prescriptionParticipantId").html(jsonPrescription.participantId);
-                        $("#prescriptionExpires").html(jsonPrescription.expirationDate);
-                        $("#prescriptionRounds").html(jsonPrescription.rounds);
-    
-                        $("#prescriptionInfo").show();                        
-
-                    } else if(jsonPrescription.type == <?php
-
-                    echo (Prescription::TYPE_ADMISSION);
-                    ?>){
+                    if(jsonPrescription.admissionId){
                         //Patient QR
                         if(jsonPrescription.program != null){
                             $("#personalPrescriptionProgram").html(jsonPrescription.program);
@@ -238,10 +225,20 @@ echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang())
                         }                                                
 
                         $("#personalPrescriptionInfo").show();
+                    } else {
+                        //Prescription QR                        
+                        $("#prescriptionId").html(jsonPrescription.id);
+                        $("#prescriptionProgram").html(jsonPrescription.program);
+                        $("#prescriptionTeam").html(jsonPrescription.team);
+                        $("#prescriptionParticipantId").html(jsonPrescription.participantId);
+                        $("#prescriptionExpires").html(jsonPrescription.expirationDate);
+                        $("#prescriptionRounds").html(jsonPrescription.rounds);
+    
+                        $("#prescriptionInfo").show();                        
                     }
 
                     //Now that a prescription has been scanned, hide the rest of the page
-                    $("#labelInput").hide();
+                    $("#participant_ref").hide();
                     $("#label-text").hide();
                     $("#info-div").hide();
                     $("#button-div").hide();
