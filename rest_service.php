@@ -109,7 +109,11 @@ function processKit($kitInfo) {
 
     if ($prescription && $prescription->getAdmissionId()) {
         // The prescription contains information about the ADMISSION that should be used
-        list($foundAdmission, $alreadyInitialized) = loadExistingAdmission($prescription->getAdmissionId(), $kitInfo, $caseByDevice);
+        list($foundAdmission, $alreadyInitialized, $lc2Action) = loadExistingAdmission($prescription->getAdmissionId(), $kitInfo, $caseByDevice);
+        if ($lc2Action) {
+            // There is something wrong with the ADMISSION
+            return $lc2Action;
+        }
         $subscription = $foundAdmission->getSubscription();
         $existingCaseId = $foundAdmission->getCaseId();
         $programId = $subscription->getProgram()->getId();
@@ -189,7 +193,7 @@ function processKit($kitInfo) {
  * @param APICase $caseByDevice
  * @throws APIException
  * @throws KitException
- * @return [APIAdmission, boolean]
+ * @return [APIAdmission, boolean, LC2Action]
  */
 function loadExistingAdmission($admissionId, $kitInfo, $caseByDevice) {
     $api = LinkcareSoapAPI::getInstance();
@@ -204,7 +208,7 @@ function loadExistingAdmission($admissionId, $kitInfo, $caseByDevice) {
 
     if ($caseByDevice && $caseByDevice->getId() != $admission->getCaseId()) {
         // There exists an ADMISSION for the KIT that correspond to a CASE different that the ADMISSION provided
-        throw new KitException(ErrorInfo::KIT_ALREADY_USED);
+        return [$admission, true, calculateRedirectForAdmission($admission)];
     }
 
     if ($caseByDevice) {
@@ -219,18 +223,69 @@ function loadExistingAdmission($admissionId, $kitInfo, $caseByDevice) {
 
         $admissionForKit = count($kitAdmissions) > 0 ? $kitAdmissions[0] : null; // There can only exist one Admission per device
         if ($admissionForKit && $admissionForKit->getId() != $admission->getId()) {
-            throw new KitException(ErrorInfo::KIT_ALREADY_USED);
+            return [$admission, true, calculateRedirectForAdmission($admission)];
         }
     }
 
     if ($admission->getStatus() == 'INCOMPLETE') {
         // The patient information is not yet complete. Cannot assign KIT information to the admission
-        throw new KitException(ErrorInfo::ADMISSION_INCOMPLETE);
+        $lc2Action = new LC2Action(LC2Action::ACTION_REDIRECT_TO_CASE);
+        $lc2Action->setAdmissionId($admission->getId());
+        $lc2Action->setCaseId($admission->getCaseId());
+        $error = new ErrorInfo(ErrorInfo::ADMISSION_INCOMPLETE);
+        $lc2Action->setErrorMessage($error->getErrorMessage());
+        return $lc2Action;
     }
 
     $alreadyInitialized = $admission->getStatus() != 'ENROLLED';
 
     return [$admission, $alreadyInitialized];
+}
+
+/**
+ * Generates a LC2 Action if the ADMISSION is known but some error happened with the KIT ID
+ *
+ * @param APIAdmission $admission
+ * @throws APIException
+ */
+function calculateRedirectForAdmission($admission) {
+    $api = LinkcareSoapAPI::getInstance();
+    $lc2Action = new LC2Action(LC2Action::ACTION_REDIRECT_TO_CASE);
+    $lc2Action->setAdmissionId($admission->getId());
+    $lc2Action->setCaseId($admission->getCaseId());
+    $error = new ErrorInfo(ErrorInfo::ADMISSION_INCOMPLETE);
+    $lc2Action->setErrorMessage($error->getErrorMessage());
+
+    // If the TASK "" exists and is open, then reset the value of the KIT ID and redirect to the TASK
+    $tasks = $api->case_get_task_list($admission->getCaseId(), null, null, '{"admission" : "' . $admission->getId() . '"}');
+    $hfTask = null;
+    foreach ($tasks as $t) {
+        if ($t->getTaskCode() == $GLOBALS["TASK_CODES"]["HEALTH_FORFAIT"] && in_array($t->getStatus(), ['OPEN', 'ASSIGNED/NOT DONE'])) {
+            // There exists an open REGISTER KIT TASK
+            $hfTask = $t;
+            break;
+        }
+    }
+
+    if ($hfTask) {
+        $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_TASK);
+        $lc2Action->setTaskId($hfTask->getId());
+        $forms = $api->task_activity_list($hfTask->getId());
+        if ($api->errorCode()) {
+            // An unexpected error happened while obtaining the list of activities
+            throw new APIException($api->errorCode(), $api->errorMessage());
+        }
+
+        foreach ($forms as $form) {
+            if ($form->getFormCode() == $GLOBALS["FORM_CODES"]["HEALTH_FORFAIT"] && $form->getStatus() == "OPEN") {
+                // The HEALTH FORFAIT FORM is open: reset the "KIT ID" ITEM
+                $api->form_set_answer($form->getId(), $GLOBALS["HEALTH_FORFAIT"]["KIT_ID"], '');
+                break;
+            }
+        }
+    }
+
+    return $lc2Action;
 }
 
 /**
