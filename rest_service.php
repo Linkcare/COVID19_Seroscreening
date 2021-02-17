@@ -83,11 +83,11 @@ function processKit($kitInfo) {
 
     // Find out if there exists a patient assigned to the Kit ID
     $casesByDevice = $api->case_search("SEROSCREENING:" . $kitInfo->getId() . "");
-    if (!empty($casesByDevice)) {
-        $caseByDevice = $casesByDevice[0];
-    }
     if ($api->errorCode()) {
         throw new APIException($api->errorCode(), $api->errorMessage());
+    }
+    if (!empty($casesByDevice)) {
+        $caseByDevice = $casesByDevice[0];
     }
 
     /*
@@ -494,9 +494,15 @@ function findSubscription($prescription, $defaultProgramCode = null) {
 
     if ($api->getSession()->getTeamId() != $teamId) {
         $api->session_set_team($teamId);
+        if ($api->errorCode()) {
+            throw new APIException($api->errorCode(), $api->errorMessage());
+        }
     }
     if ($api->getSession()->getRoleId() != 24) {
         $api->session_role(24);
+        if ($api->errorCode()) {
+            throw new APIException($api->errorCode(), $api->errorMessage());
+        }
     }
 
     if ($prescription->getProgram()) {
