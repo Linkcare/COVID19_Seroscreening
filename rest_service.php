@@ -325,6 +325,8 @@ function loadAdmissionFromPrescription($kitInfo, $prescription, $caseByDevice) {
         $searchCondition->identifier = new StdClass();
         $searchCondition->identifier->code = PATIENT_IDENTIFIER;
         $searchCondition->identifier->value = $prescription->getParticipantId();
+        $searchCondition->identifier->program = $subscription->getProgram()->getId();
+        $searchCondition->identifier->team = $subscription->getTeam()->getId();
         if ($api->errorCode()) {
             throw new APIException($api->errorCode(), $api->errorMessage());
         }
