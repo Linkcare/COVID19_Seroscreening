@@ -208,7 +208,7 @@ function loadExistingAdmission($admissionId, $kitInfo, $caseByDevice) {
 
     if ($caseByDevice && $caseByDevice->getId() != $admission->getCaseId()) {
         // There exists an ADMISSION for the KIT that correspond to a CASE different that the ADMISSION provided
-        return [$admission, true, calculateRedirectForAdmission($admission)];
+        return [$admission, true, calculateRedirectForAdmission($admission, ErrorInfo::KIT_ALREADY_USED)];
     }
 
     if ($caseByDevice) {
@@ -223,7 +223,7 @@ function loadExistingAdmission($admissionId, $kitInfo, $caseByDevice) {
 
         $admissionForKit = count($kitAdmissions) > 0 ? $kitAdmissions[0] : null; // There can only exist one Admission per device
         if ($admissionForKit && $admissionForKit->getId() != $admission->getId()) {
-            return [$admission, true, calculateRedirectForAdmission($admission)];
+            return [$admission, true, calculateRedirectForAdmission($admission, ErrorInfo::KIT_ALREADY_USED)];
         }
     }
 
@@ -248,13 +248,15 @@ function loadExistingAdmission($admissionId, $kitInfo, $caseByDevice) {
  * @param APIAdmission $admission
  * @throws APIException
  */
-function calculateRedirectForAdmission($admission) {
+function calculateRedirectForAdmission($admission, $errorCode = null) {
     $api = LinkcareSoapAPI::getInstance();
     $lc2Action = new LC2Action(LC2Action::ACTION_REDIRECT_TO_CASE);
     $lc2Action->setAdmissionId($admission->getId());
     $lc2Action->setCaseId($admission->getCaseId());
-    $error = new ErrorInfo(ErrorInfo::ADMISSION_INCOMPLETE);
-    $lc2Action->setErrorMessage($error->getErrorMessage());
+    if ($errorCode) {
+        $error = new ErrorInfo($errorCode);
+        $lc2Action->setErrorMessage($error->getErrorMessage());
+    }
 
     // If the TASK "" exists and is open, then reset the value of the KIT ID and redirect to the TASK
     $tasks = $api->case_get_task_list($admission->getCaseId(), null, null, '{"admission" : "' . $admission->getId() . '"}');
