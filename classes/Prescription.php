@@ -62,7 +62,7 @@ class Prescription {
                 $pd = json_decode(base64_decode($prescriptionStr));
                 if ($pd) {
                     $this->prescriptionData = $pd;
-                    $this->valid = trim($pd->id) && trim($pd->program) || trim($pd->admission);
+                    $this->valid = (trim($pd->id) && trim($pd->program)) || trim($pd->admission);
                 }
             } elseif ($participant) {
                 // Old format with only participantId
