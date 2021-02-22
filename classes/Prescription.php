@@ -14,7 +14,7 @@ class Prescription {
      * <li>program</li>
      * <li>rounds (default = 0)</li>
      * <li>admission</li>
-     * <li>patientName</li>
+     * <li>name</li>
      * </ul>
      *
      * @var StdClass
@@ -52,7 +52,7 @@ class Prescription {
                         $this->prescriptionData->program = $param[1];
                         break;
                     case 'n' :
-                        $this->prescriptionData->patientName = $param[1];
+                        $this->prescriptionData->name = $param[1];
                         break;
                 }
             }
@@ -62,7 +62,7 @@ class Prescription {
                 $pd = json_decode(base64_decode($prescriptionStr));
                 if ($pd) {
                     $this->prescriptionData = $pd;
-                    $this->valid = trim($pd->id) && trim($pd->program);
+                    $this->valid = trim($pd->id) && trim($pd->program) || trim($pd->admission);
                 }
             } elseif ($participant) {
                 // Old format with only participantId
@@ -111,7 +111,7 @@ class Prescription {
     }
 
     function getPatientName() {
-        return $this->prescriptionData->patientName;
+        return $this->prescriptionData->name;
     }
 
     /**
@@ -172,7 +172,7 @@ class Prescription {
         $obj->expirationDate = $this->prescriptionData->expiration;
         $obj->participantId = $this->prescriptionData->participant;
         $obj->rounds = $this->prescriptionData->rounds;
-        $obj->patientName = $this->prescriptionData->patientName;
+        $obj->name = $this->prescriptionData->name;
         $obj->admissionId = $this->prescriptionData->admission;
 
         $obj->success = $this->valid ? 1 : 0;

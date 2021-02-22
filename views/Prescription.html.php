@@ -217,8 +217,8 @@ echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang())
                         } else {
                         	$("#personalPrescriptionTeam").parent().hide();
                         }
-                        if(jsonPrescription.patientName != null){
-                        	$("#personalPrescriptionPatientName").html(jsonPrescription.patientName);
+                        if(jsonPrescription.name != null){
+                        	$("#personalPrescriptionPatientName").html(jsonPrescription.name);
                             $("#personalPrescriptionPatientName").parent().show();
                         } else {
                         	$("#personalPrescriptionPatientName").parent().hide();
