@@ -125,8 +125,14 @@ function processKit($kitInfo) {
         $alreadyInitialized = $foundAdmission != null;
         $programId = $subscription->getProgram()->getId();
         $teamId = $subscription->getTeam()->getId();
-    } elseif ($caseByDevice) {
-        // We only have the KIT_ID. Select the first admission of the CASE assigned to the KIT
+    } elseif (!$caseByDevice) {
+        // We only have the KIT_ID and no PATIENT is assigned to that device. Create a new ADMISSION
+        $subscription = findSubscription(null, $kitInfo->getProgramCode());
+        if (!$subscription) {
+            throw new KitException(ErrorInfo::SUBSCRIPTION_NOT_FOUND);
+        }
+    } else {
+        // We only have the KIT_ID and we have found a PATIENT for that device. Select the first admission of the CASE assigned to the KIT
 
         $searchCondition = new StdClass();
         $searchCondition->data_code = new StdClass();
@@ -486,7 +492,7 @@ function findSubscription($prescription, $defaultProgramCode = null) {
     $programId = null;
     $programCode = null;
 
-    if ($prescription->getTeam()) {
+    if ($prescription && $prescription->getTeam()) {
         $team = $api->team_get($prescription->getTeam());
         if ($api->errorCode()) {
             throw new APIException($api->errorCode(), $api->errorMessage());
@@ -509,7 +515,7 @@ function findSubscription($prescription, $defaultProgramCode = null) {
         }
     }
 
-    if ($prescription->getProgram()) {
+    if ($prescription && $prescription->getProgram()) {
         $program = $api->program_get($prescription->getProgram());
         if ($api->errorCode()) {
             throw new APIException($api->errorCode(), $api->errorMessage());
@@ -557,7 +563,7 @@ function initializeAdmission($kitInfo, $prescription, $caseId, $subscriptionId, 
         $device->setValue("SEROSCREENING:" . $kitInfo->getId());
         $contactInfo->addDevice($device);
 
-        if ($prescription->getParticipantId()) {
+        if ($prescription && $prescription->getParticipantId()) {
             $studyRef = new APIIdentifier(PATIENT_IDENTIFIER, $prescription->getParticipantId());
             $contactInfo->addIdentifier($studyRef);
         }
