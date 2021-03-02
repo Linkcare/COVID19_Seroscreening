@@ -43,12 +43,19 @@ if ($dbConnResult === true) {
             }
             break;
         case 'create_admission' :
-            $prescriptionStr = $_POST['prescription'];
-            $participantRef = $_POST['participant'];
-            $kit->storeTracking(KitInfo::ACTION_PROCESSED, $prescriptionStr ? $prescriptionStr : $participantRef);
-            $targetUrl = $kit->generateURLtoLC2() . "&prescription=" . urlencode($prescriptionStr) . "&participant=" . urlencode($participantRef);
-            header('Content-Type: application/text');
-            echo $targetUrl;
+            if (isset($_POST['prescription'])) {
+                $prescriptionStr = $_POST['prescription'];
+                $kit->storeTracking(KitInfo::ACTION_PROCESSED, $prescriptionStr);
+                $targetUrl = $kit->generateURLtoLC2() . "&prescription=" . urlencode($prescriptionStr);
+                header('Content-Type: application/text');
+                echo $targetUrl;
+            } elseif (isset($_POST['participant'])) {
+                $participantRef = $_POST['participant'];
+                $kit->storeTracking(KitInfo::ACTION_PROCESSED, $participantRef);
+                $targetUrl = $kit->generateURLtoLC2();
+                header('Content-Type: application/text');
+                echo $targetUrl;
+            }
             break;
         case 'set_prescription' :
             // PEDRO REMOVE

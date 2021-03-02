@@ -12,12 +12,7 @@
         	<div class="form-group">
         		<h4 style="text-align: center;"><b><?php
         echo (Localization::translate('Prescription.Title'));
-        ?></b></h4>
-
-                <label id="label-text" for="participant_ref"><?php
-
-                echo (Localization::translate('Prescription.Label'));
-                ?>:</label>
+        ?></b></h4>                
 
                     <div id="prescriptionInfo" style="display: none;">
                   		<ul>
@@ -56,7 +51,15 @@
                   		</ul>
           			</div>
 
-            		<input type="text" class="form-control" id="participant_ref">
+            		<div class="form-check" style="margin-top: 15px;">
+                      	<input class="form-check-input" type="checkbox" value="" id="participant_ref">
+                      	<label id="label-text" class="form-check-label" for="participant_ref">
+                        	<?php
+
+                        echo (Localization::translate('Prescription.Label.Checkbox'));
+                        ?>
+                      	</label>
+                    </div>
             		<input type="hidden" id="qr_code">
           	</div>
 
@@ -108,17 +111,26 @@
 	$('#div-qr-video').hide();
 
 	/* The submit button will be started dinamically and the prescription added from the input */
-	$("#btnSubmit").click(function (e) {
-		var prescriptionStr = $("#qr_code").val();
-		var participant_ref = $("#participant_ref").val();
-
-        $.post(
-        	'actions.php',
-            {action: 'create_admission', prescription: prescriptionStr, participant: participant_ref},
-            function(targetUrl){
-                window.location.href = targetUrl;
-            }
-        );
+	$("#btnSubmit").click(function (e) {		
+		if($("#participant_ref").prop('checked')){
+			var participant_ref_check = '';
+			$.post(
+	        	'actions.php',
+	            {action: 'create_admission', participant: participant_ref_check},
+	            function(targetUrl){
+	                window.location.href = targetUrl;
+	            }
+	        );
+		}else{
+			var prescriptionStr = $("#qr_code").val();	
+			$.post(
+	        	'actions.php',
+	            {action: 'create_admission', prescription: prescriptionStr},
+	            function(targetUrl){
+	                window.location.href = targetUrl;
+	            }
+	        );
+		}
 	});
 
 	$("#back-arrow").click(function (e) {
@@ -129,13 +141,14 @@
             $("#prescriptionInfo").hide();
             $("#personalPrescriptionInfo").hide();
 
-            $("#participant_ref").val("");
+            $("#qr_code").val("");
+            $("#participant_ref").prop('checked', false);
 			$("#participant_ref").show();
             $("#label-text").show();
             $("#info-div").show();
             $("#button-div").show();
-    	    var submit = $("#btnSubmit");
-    		submit.prop('disabled', !$("#participant_ref").val().length);
+
+    	    $("#btnSubmit").prop('disabled', true);
 
 
 		} else {
@@ -154,8 +167,8 @@ echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang())
 	    var submit = $("#btnSubmit");
 	    submit.prop('disabled', true);
 				
-	    $("#participant_ref").on('input change', function() {
-	        submit.prop('disabled', !$(this).val().length);
+	    $("#participant_ref").change(function() {
+	        submit.prop('disabled', !$(this).prop('checked'));
 	        $("#prescriptionError").hide();
 	        $("#participant_ref").css( "background-color", "" );
     	});
