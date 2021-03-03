@@ -214,7 +214,7 @@ function loadExistingAdmission($admissionId, $kitInfo, $caseByDevice) {
 
     if ($caseByDevice && $caseByDevice->getId() != $admission->getCaseId()) {
         // There exists an ADMISSION for the KIT that correspond to a CASE different that the ADMISSION provided
-        return [$admission, true, calculateRedirectForAdmission($admission, ErrorInfo::KIT_ALREADY_USED)];
+        return [$admission, true, invalidateKit($admission, ErrorInfo::KIT_ALREADY_USED)];
     }
 
     if ($caseByDevice) {
@@ -229,7 +229,7 @@ function loadExistingAdmission($admissionId, $kitInfo, $caseByDevice) {
 
         $admissionForKit = count($kitAdmissions) > 0 ? $kitAdmissions[0] : null; // There can only exist one Admission per device
         if ($admissionForKit && $admissionForKit->getId() != $admission->getId()) {
-            return [$admission, true, calculateRedirectForAdmission($admission, ErrorInfo::KIT_ALREADY_USED)];
+            return [$admission, true, invalidateKit($admission, ErrorInfo::KIT_ALREADY_USED)];
         }
     }
 
@@ -249,12 +249,18 @@ function loadExistingAdmission($admissionId, $kitInfo, $caseByDevice) {
 }
 
 /**
- * Generates a LC2 Action if the ADMISSION is known but some error happened with the KIT ID
+ * If the "HEALTH FORFAIT" is OPEN, remove the KIT ID value.
+ * Teh function returns a LC2 Action to redirect to:
+ * <ul>
+ * <li>Display the "HEALTH FORFAIT" TASK if it is OPEN</li>
+ * <li>Display the CASE TASKS otherwise</li>
+ * </ul>
  *
  * @param APIAdmission $admission
  * @throws APIException
+ * @return LC2Action
  */
-function calculateRedirectForAdmission($admission, $errorCode = null) {
+function invalidateKit($admission, $errorCode = null) {
     $api = LinkcareSoapAPI::getInstance();
     $lc2Action = new LC2Action(LC2Action::ACTION_REDIRECT_TO_CASE);
     $lc2Action->setAdmissionId($admission->getId());
@@ -264,7 +270,7 @@ function calculateRedirectForAdmission($admission, $errorCode = null) {
         $lc2Action->setErrorMessage($error->getErrorMessage());
     }
 
-    // If the TASK "" exists and is open, then reset the value of the KIT ID and redirect to the TASK
+    // If the TASK "HEALTH_FORFAIT" exists and is open, then reset the value of the KIT ID and redirect to the TASK
     $tasks = $api->case_get_task_list($admission->getCaseId(), null, null, '{"admission" : "' . $admission->getId() . '"}');
     $hfTask = null;
     foreach ($tasks as $t) {
@@ -291,6 +297,43 @@ function calculateRedirectForAdmission($admission, $errorCode = null) {
                 break;
             }
         }
+    }
+
+    return $lc2Action;
+}
+
+/**
+ * Generates a LC2 Action to display the first open TASK, or the last TASK of the ADMISSION if all are closed
+ *
+ * @param APIAdmission $admission
+ * @throws APIException
+ * @return LC2Action
+ */
+function redirectToFirstOpenTask($admission) {
+    $api = LinkcareSoapAPI::getInstance();
+    $lc2Action = new LC2Action(LC2Action::ACTION_REDIRECT_TO_CASE);
+    $lc2Action->setAdmissionId($admission->getId());
+    $lc2Action->setCaseId($admission->getCaseId());
+
+    // If the TASK "" exists and is open, then reset the value of the KIT ID and redirect to the TASK
+    $tasks = $api->case_get_task_list($admission->getCaseId(), null, null, '{"admission" : "' . $admission->getId() . '"}');
+    $firstOpenTask = null;
+    $firstTask = null;
+    foreach ($tasks as $t) {
+        if (!$firstOpenTask && in_array($t->getStatus(), ['OPEN', 'ASSIGNED/NOT DONE'])) {
+            // There exists an open TASK
+            $firstOpenTask = $t;
+        }
+        $firstTask = $t;
+    }
+
+    if ($firstOpenTask) {
+        $firstTask = $firstOpenTask;
+    }
+
+    if ($firstTask) {
+        $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_TASK);
+        $lc2Action->setTaskId($firstTask->getId());
     }
 
     return $lc2Action;
@@ -619,14 +662,18 @@ function initializeAdmission($kitInfo, $prescription, $caseId, $subscriptionId, 
 
     try {
         createKitInfoTask($admission->getId(), $kitInfo);
-        // createPrescriptionInfoTask($admission->getId(), $prescription);
-        list($taskId, $formId) = createRegisterKitTask($admission->getId());
-        $lc2Action->setTaskId($taskId);
-        if ($formId) {
-            $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_FORM);
-            $lc2Action->setFormId($formId);
+        if ($admission->getStatus() != APIAdmission::STATUS_INCOMPLETE) {
+            // Only insert the Register Kit TASK if the ADMISSION is not incomplete
+            list($taskId, $formId) = createRegisterKitTask($admission->getId());
+            $lc2Action->setTaskId($taskId);
+            if ($formId) {
+                $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_FORM);
+                $lc2Action->setFormId($formId);
+            } else {
+                $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_TASK);
+            }
         } else {
-            $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_TASK);
+            $lc2Action = redirectToFirstOpenTask($admission);
         }
     } catch (APIException $e) {
         $failed = true;

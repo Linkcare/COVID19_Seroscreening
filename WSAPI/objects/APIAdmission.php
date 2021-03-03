@@ -36,6 +36,7 @@ class APIAdmission {
         }
         $admission = new APIAdmission();
         $admission->id = (string) $xmlNode->ref;
+        $admission->status = NullableString($xmlNode->status); // admission_create returns the status at this level
         $admission->isNewAdmission = $xmlNode->type != "EXIST";
         if ($xmlNode->data) {
             if ($xmlNode->data->case) {
@@ -48,7 +49,9 @@ class APIAdmission {
             $admission->dischargeDate = NullableString($xmlNode->data->discharge_date);
             $admission->suspendedDate = NullableString($xmlNode->data->suspended_date);
             $admission->rejectedDate = NullableString($xmlNode->data->rejected_date);
-            $admission->status = NullableString($xmlNode->data->status);
+            if (!$admission->status) {
+                $admission->status = NullableString($xmlNode->data->status);
+            }
             $admission->dateToDisplay = NullableString($xmlNode->data->date_to_display);
             $admission->ageToDisplay = NullableInt($xmlNode->data->age_to_display);
             if ($xmlNode->data->subscription) {
