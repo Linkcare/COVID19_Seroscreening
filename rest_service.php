@@ -117,11 +117,7 @@ function processKit($kitInfo, $subscriptionId = null) {
             }
         } else {
             $subscriptions = findSubscription($prescription, $kitInfo->getProgramCode());
-            if (empty($subscriptions)) {
-                throw new KitException(ErrorInfo::SUBSCRIPTION_NOT_FOUND);
-            }
             /* @var APISubscription $subscription */
-            $subscription = reset($subscriptions);
             if (count($subscriptions) > 1) {
                 // The user must select a SUBSCRIPTION
                 $lc2Action = new LC2Action(LC2Action::ACTION_SERVICE_REQUEST);
@@ -129,6 +125,7 @@ function processKit($kitInfo, $subscriptionId = null) {
                 $lc2Action->setRequestType(LC2Action::REQUEST_SUBSCRIPTION);
                 return $lc2Action;
             }
+            $subscription = empty($subscriptions) ? null : reset($subscriptions);
         }
     }
 
@@ -144,6 +141,9 @@ function processKit($kitInfo, $subscriptionId = null) {
         $programId = $subscription->getProgram()->getId();
         $teamId = $subscription->getTeam()->getId();
     } elseif ($prescription) {
+        if (!$subscription) {
+            throw new KitException(ErrorInfo::SUBSCRIPTION_NOT_FOUND);
+        }
         list($foundAdmission, $existingCaseId) = loadAdmissionFromPrescription($subscription, $kitInfo, $prescription, $caseByDevice);
         /* If we finally find an existing a n ADMISSION from the PRESCRIPTION information, it must be initialized when it was created */
         $alreadyInitialized = $foundAdmission != null;
@@ -151,6 +151,9 @@ function processKit($kitInfo, $subscriptionId = null) {
         $teamId = $subscription->getTeam()->getId();
     } elseif (!$caseByDevice) {
         // We only have the KIT_ID and no PATIENT is assigned to that device. Create a new ADMISSION
+        if (!$subscription) {
+            throw new KitException(ErrorInfo::SUBSCRIPTION_NOT_FOUND);
+        }
     } else {
         // We only have the KIT_ID and we have found a PATIENT for that device. Select the first admission of the CASE assigned to the KIT
 
@@ -785,8 +788,6 @@ function updateAdmission($admission, $kitInfo) {
                 // An unexpected error happened while obtaining the list of activities
                 throw new APIException($api->errorCode(), $api->errorMessage());
             }
-        } else {
-            throw new APIException("FORM NOT FOUND", "KIT_RESULTS FORM NOT FOUND: (" . $GLOBALS["FORM_CODES"]["KIT_INFO"] . ")");
         }
     }
 
