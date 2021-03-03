@@ -4,7 +4,9 @@ class LC2Action {
     const ACTION_REDIRECT_TO_TASK = "SHOW_TASK";
     const ACTION_REDIRECT_TO_CASE = "SHOW_CASE_TASK_LIST";
     const ACTION_REDIRECT_TO_FORM = "SHOW_FORM";
+    const ACTION_SERVICE_REQUEST = "SERVICE_REQUEST";
     const ACTION_ERROR_MSG = "ERROR_MSG";
+    const REQUEST_SUBSCRIPTION = "REQUEST_SUBSCRIPTION";
     private $action;
     private $caseId;
     private $taskId;
@@ -13,6 +15,7 @@ class LC2Action {
     private $errorMessage;
     private $programId;
     private $teamId;
+    private $requestType;
 
     public function __construct($actionType = null) {
         $this->setActionType($actionType);
@@ -78,6 +81,15 @@ class LC2Action {
         $this->errorMessage = $errorMsg;
     }
 
+    /**
+     *
+     * @param string $errorMsg
+     */
+    public function setRequestType($type) {
+        // For actions of type SERVICE_REQUEST
+        $this->requestType = $type;
+    }
+
     /*
      * **********************************
      * METHODS
@@ -113,6 +125,10 @@ class LC2Action {
 
         if ($this->errorMessage) {
             $action->error_message = $this->errorMessage;
+        }
+
+        if ($this->requestType) {
+            $action->request = $this->requestType;
         }
 
         return json_encode($action);

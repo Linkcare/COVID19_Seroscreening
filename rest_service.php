@@ -12,7 +12,7 @@ const PATIENT_IDENTIFIER = 'PARTICIPANT_REF';
  * @param KitInfo $kitInfo
  * @return string
  */
-function service_dispatch_kit($token = null, $kitInfo) {
+function service_dispatch_kit($token = null, $kitInfo, $subscriptionId) {
     $timezone = "0";
 
     if (!$GLOBALS["KIT_INFO_MGR"]) {
@@ -42,7 +42,7 @@ function service_dispatch_kit($token = null, $kitInfo) {
             $session = LinkcareSoapAPI::getInstance()->getSession();
             Localization::init($session->getLanguage());
             // Find the SUBSCRIPTION of the PROGRAM "Seroscreening" of the active user
-            $lc2Action = processKit($kitInfo);
+            $lc2Action = processKit($kitInfo, $subscriptionId);
         } catch (APIException $e) {
             $lc2Action = new LC2Action(LC2Action::ACTION_ERROR_MSG);
             $lc2Action->setErrorMessage($e->getMessage());
@@ -63,7 +63,7 @@ function service_dispatch_kit($token = null, $kitInfo) {
  * @throws Exception
  * @return LC2Action
  */
-function processKit($kitInfo) {
+function processKit($kitInfo, $subscriptionId = null) {
     $lc2Action = null;
     $api = LinkcareSoapAPI::getInstance();
 
@@ -107,6 +107,31 @@ function processKit($kitInfo) {
         throw new KitException(ErrorInfo::PRESCRIPTION_EXPIRED);
     }
 
+    // Find the target SUBSCRIPTION (only if we don't know the ADMISSION
+    if (!$prescription || !$prescription->getAdmissionId()) {
+        if ($subscriptionId) {
+            // An specific SUBSCRIPTION ID has been provided
+            $subscription = $api::getInstance()->subscription_get(null, null, $subscriptionId);
+            if ($api->errorCode()) {
+                throw new APIException($api->errorCode(), $api->errorMessage());
+            }
+        } else {
+            $subscriptions = findSubscription($prescription, $kitInfo->getProgramCode());
+            if (empty($subscriptions)) {
+                throw new KitException(ErrorInfo::SUBSCRIPTION_NOT_FOUND);
+            }
+            /* @var APISubscription $subscription */
+            $subscription = reset($subscriptions);
+            if (count($subscriptions) > 1) {
+                // The user must select a SUBSCRIPTION
+                $lc2Action = new LC2Action(LC2Action::ACTION_SERVICE_REQUEST);
+                $lc2Action->setProgramId($subscription->getProgram()->getId());
+                $lc2Action->setRequestType(LC2Action::REQUEST_SUBSCRIPTION);
+                return $lc2Action;
+            }
+        }
+    }
+
     if ($prescription && $prescription->getAdmissionId()) {
         // The prescription contains information about the ADMISSION that should be used
         list($foundAdmission, $alreadyInitialized, $lc2Action) = loadExistingAdmission($prescription->getAdmissionId(), $kitInfo, $caseByDevice);
@@ -119,18 +144,13 @@ function processKit($kitInfo) {
         $programId = $subscription->getProgram()->getId();
         $teamId = $subscription->getTeam()->getId();
     } elseif ($prescription) {
-
-        list($foundAdmission, $subscription, $existingCaseId) = loadAdmissionFromPrescription($kitInfo, $prescription, $caseByDevice);
+        list($foundAdmission, $existingCaseId) = loadAdmissionFromPrescription($subscription, $kitInfo, $prescription, $caseByDevice);
         /* If we finally find an existing a n ADMISSION from the PRESCRIPTION information, it must be initialized when it was created */
         $alreadyInitialized = $foundAdmission != null;
         $programId = $subscription->getProgram()->getId();
         $teamId = $subscription->getTeam()->getId();
     } elseif (!$caseByDevice) {
         // We only have the KIT_ID and no PATIENT is assigned to that device. Create a new ADMISSION
-        $subscription = findSubscription(null, $kitInfo->getProgramCode());
-        if (!$subscription) {
-            throw new KitException(ErrorInfo::SUBSCRIPTION_NOT_FOUND);
-        }
     } else {
         // We only have the KIT_ID and we have found a PATIENT for that device. Select the first admission of the CASE assigned to the KIT
 
@@ -341,6 +361,7 @@ function redirectToFirstOpenTask($admission) {
 
 /**
  *
+ * @param APISubscription $subscription
  * @param KitInfo $kitInfo
  * @param Prescription $prescription
  * @param APICase $caseByDevice An existing CASE already associated to the KIT ID (if any)
@@ -348,20 +369,14 @@ function redirectToFirstOpenTask($admission) {
  * @throws APIException
  * @return [APIAdmission, boolean, string]
  */
-function loadAdmissionFromPrescription($kitInfo, $prescription, $caseByDevice) {
+function loadAdmissionFromPrescription($subscription, $kitInfo, $prescription, $caseByDevice) {
     $api = LinkcareSoapAPI::getInstance();
 
     /*
      * We have a Prescription that allows us to:
-     * - Find out the SUBSCRIPTION that should be used to create the ADMISSION
      * - If a PRESCRIPTION ID and/or PARTICIPANT ID are provided, find existing ADMISSION associated to those values and check that there are no
      * incoherences
      */
-    // Find the subscription for the PROGRAM/TEAM provided in the prescription information
-    $subscription = findSubscription($prescription, $kitInfo->getProgramCode());
-    if (!$subscription) {
-        throw new KitException(ErrorInfo::SUBSCRIPTION_NOT_FOUND);
-    }
 
     /*
      * Find if there exists a patient with the PARTICIPANT_ID
@@ -513,7 +528,7 @@ function loadAdmissionFromPrescription($kitInfo, $prescription, $caseByDevice) {
             throw new KitException(ErrorInfo::MAX_ROUNDS_EXCEEDED);
         }
     }
-    return [$foundAdmission, $subscription, $existingCaseId];
+    return [$foundAdmission, $existingCaseId];
 }
 
 /**
@@ -530,7 +545,7 @@ function loadAdmissionFromPrescription($kitInfo, $prescription, $caseByDevice) {
  */
 function findSubscription($prescription, $defaultProgramCode = null) {
     $api = LinkcareSoapAPI::getInstance();
-    $found = null;
+    $found = [];
     $teamId = null;
     $programId = null;
     $programCode = null;
@@ -545,12 +560,12 @@ function findSubscription($prescription, $defaultProgramCode = null) {
         $teamId = $api->getSession()->getTeamId();
     }
 
-    if ($api->getSession()->getTeamId() != $teamId) {
-        $api->session_set_team($teamId);
-        if ($api->errorCode()) {
-            throw new APIException($api->errorCode(), $api->errorMessage());
-        }
-    }
+    // if ($api->getSession()->getTeamId() != $teamId) {
+    // $api->session_set_team($teamId);
+    // if ($api->errorCode()) {
+    // throw new APIException($api->errorCode(), $api->errorMessage());
+    // }
+    // }
     if ($api->getSession()->getRoleId() != 24) {
         $api->session_role(24);
         if ($api->errorCode()) {
@@ -571,13 +586,12 @@ function findSubscription($prescription, $defaultProgramCode = null) {
         $programCode = $GLOBALS["PROGRAM_CODE"];
     }
 
-    $filter = ["member_role" => 24, "member_team" => $teamId, "program" => $$programId];
+    $filter = ["member_role" => 24, "member_team" => $api->getSession()->getTeamId(), "program" => $$programId];
     $subscriptions = $api->subscription_list($filter);
     foreach ($subscriptions as $s) {
         $p = $s->getProgram();
         if ($p && $p->getCode() == $programCode) {
-            $found = $s;
-            break;
+            $found[] = $s;
         }
     }
 
@@ -1050,6 +1064,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $kitInfo->setProgramCode($_POST["program"]);
     $kitInfo->setPrescriptionString(urldecode($_POST["prescription"]));
     $kitInfo->setParticipantRef(urldecode($_POST["participant"]));
+    $subscriptionId = urldecode($_POST["subscription"]);
     header('Content-type: application/json');
-    echo service_dispatch_kit($_POST["token"], $kitInfo);
+    echo service_dispatch_kit($_POST["token"], $kitInfo, $subscriptionId);
 }

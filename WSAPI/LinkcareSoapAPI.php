@@ -149,6 +149,26 @@ class LinkcareSoapAPI {
 
     /**
      *
+     * @param string $programId
+     * @param string $teamId
+     * @param string $subscriptionId
+     * @return APISubscription
+     */
+    public function subscription_get($program, $team, $subscriptionId) {
+        $subscription = null;
+        $params = ["program" => $program, 'team' => $team, 'subscription' => $subscriptionId];
+        $resp = $this->invoke("subscription_get", $params);
+        if (!$resp->getErrorCode()) {
+            if ($result = simplexml_load_string($resp->getResult())) {
+                $subscription = APISubscription::parseXML($result);
+            }
+        }
+
+        return $subscription;
+    }
+
+    /**
+     *
      * @param string[] $filter Associative array with filter options. The key of each item is the name of the filter
      * @return APISubscription[]
      */
