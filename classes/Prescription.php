@@ -15,6 +15,9 @@ class Prescription {
      * <li>rounds (default = 0)</li>
      * <li>admission</li>
      * <li>name</li>
+     * <li>surname</li>
+     * <li>email</li>
+     * <li>phone</li>
      * </ul>
      *
      * @var StdClass
@@ -110,8 +113,29 @@ class Prescription {
         return $this->prescriptionData->admission;
     }
 
-    function getPatientName() {
-        return $this->prescriptionData->name;
+    /**
+     * Returns the full name of the patient (name + surname)
+     *
+     * @return string
+     */
+    function getFullName() {
+        return trim($this->prescriptionData->name . ' ' . $this->prescriptionData->surname);
+    }
+
+    function getName() {
+        return trim($this->prescriptionData->name);
+    }
+
+    function getSurname() {
+        return trim($this->prescriptionData->surname);
+    }
+
+    function getEmail() {
+        return trim($this->prescriptionData->email);
+    }
+
+    function getPhone() {
+        return trim($this->prescriptionData->phone);
     }
 
     /**
@@ -126,23 +150,23 @@ class Prescription {
     // SETTERS
     // **************************************************************
     function setId($value) {
-        $this->prescriptionData->id = $value;
+        $this->prescriptionData->id = trim($value);
     }
 
     function setProgram($value) {
-        $this->prescriptionData->program = $value;
+        $this->prescriptionData->program = trim($value);
     }
 
     function setTeam($value) {
-        $this->prescriptionData->team = $value;
+        $this->prescriptionData->team = trim($value);
     }
 
     function setExpirationDate($value) {
-        $this->prescriptionData->expiration = $value;
+        $this->prescriptionData->expiration = trim($value);
     }
 
     function setParticipantId($value) {
-        $this->prescriptionData->participant = $value;
+        $this->prescriptionData->participant = trim($value);
     }
 
     function setRounds($value) {
@@ -172,7 +196,9 @@ class Prescription {
         $obj->expirationDate = $this->prescriptionData->expiration;
         $obj->participantId = $this->prescriptionData->participant;
         $obj->rounds = $this->prescriptionData->rounds;
-        $obj->name = $this->prescriptionData->name;
+        $obj->name = $this->getFullName();
+        $obj->email = $this->prescriptionData->email;
+        $obj->phone = $this->prescriptionData->phone;
         $obj->admissionId = $this->prescriptionData->admission;
 
         $obj->success = $this->valid ? 1 : 0;

@@ -340,7 +340,7 @@ class APIContact {
 
     /**
      *
-     * @param APIIdentifier[]
+     * @param APIIdentifier
      */
     public function addIdentifier($identifier) {
         $this->identifiers[] = $identifier;
@@ -348,7 +348,7 @@ class APIContact {
 
     /**
      *
-     * @param APIContactAddress[]
+     * @param APIContactAddress
      */
     public function addAddress($address) {
         $this->addresses[] = $address;
@@ -356,15 +356,15 @@ class APIContact {
 
     /**
      *
-     * @param APIContactChannel[]
+     * @param APIContactChannel
      */
-    public function setPhones($phone) {
+    public function addPhone($phone) {
         $this->phones[] = $phone;
     }
 
     /**
      *
-     * @param APIContactChannel[]
+     * @param APIContactChannel
      */
     public function addEmail($email) {
         $this->emails[] = $email;
@@ -372,7 +372,7 @@ class APIContact {
 
     /**
      *
-     * @param APIContactChannel[]
+     * @param APIContactChannel
      */
     public function addDevice($device) {
         $this->devices[] = $device;

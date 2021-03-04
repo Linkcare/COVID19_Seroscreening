@@ -118,6 +118,7 @@ function processKit($kitInfo, $subscriptionId = null) {
         } else {
             $subscriptions = findSubscription($prescription, $kitInfo->getProgramCode());
             /* @var APISubscription $subscription */
+            $subscription = empty($subscriptions) ? null : reset($subscriptions);
             if (count($subscriptions) > 1) {
                 // The user must select a SUBSCRIPTION
                 $lc2Action = new LC2Action(LC2Action::ACTION_SERVICE_REQUEST);
@@ -125,7 +126,6 @@ function processKit($kitInfo, $subscriptionId = null) {
                 $lc2Action->setRequestType(LC2Action::REQUEST_SUBSCRIPTION);
                 return $lc2Action;
             }
-            $subscription = empty($subscriptions) ? null : reset($subscriptions);
         }
     }
 
@@ -559,8 +559,6 @@ function findSubscription($prescription, $defaultProgramCode = null) {
             throw new APIException($api->errorCode(), $api->errorMessage());
         }
         $teamId = $team->getId();
-    } else {
-        $teamId = $api->getSession()->getTeamId();
     }
 
     // if ($api->getSession()->getTeamId() != $teamId) {
@@ -592,6 +590,11 @@ function findSubscription($prescription, $defaultProgramCode = null) {
     $filter = ["member_role" => 24, "member_team" => $api->getSession()->getTeamId(), "program" => $$programId];
     $subscriptions = $api->subscription_list($filter);
     foreach ($subscriptions as $s) {
+        $t = $s->getTeam();
+        if ($t && $teamId && $t->getId() != $teamId) {
+            // The owner of the SUBSCRIPTION is not the expected one
+            continue;
+        }
         $p = $s->getProgram();
         if ($p && $p->getCode() == $programCode) {
             $found[] = $s;
@@ -622,6 +625,28 @@ function initializeAdmission($kitInfo, $prescription, $caseId, $subscriptionId, 
         $device = new APIContactChannel();
         $device->setValue("SEROSCREENING:" . $kitInfo->getId());
         $contactInfo->addDevice($device);
+
+        if ($prescription && $prescription->getName()) {
+            $contactInfo->setName($prescription->getName());
+        }
+
+        if ($prescription && $prescription->getSurname()) {
+            $contactInfo->setSurname($prescription->getSurname());
+        }
+
+        if ($prescription && $prescription->getEmail()) {
+            $email = new APIContactChannel();
+            $email->setValue($prescription->getEmail());
+            $email->setCategory('home');
+            $contactInfo->addEmail($email);
+        }
+
+        if ($prescription && $prescription->getPhone()) {
+            $phone = new APIContactChannel();
+            $phone->setValue($prescription->getPhone());
+            $phone->setCategory('mobile');
+            $contactInfo->addPhone($phone);
+        }
 
         if ($prescription && $prescription->getParticipantId()) {
             $studyRef = new APIIdentifier(PATIENT_IDENTIFIER, $prescription->getParticipantId());
