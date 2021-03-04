@@ -16,41 +16,36 @@
 
                     <div id="prescriptionInfo" style="display: none;">
                   		<ul>
-                  			<li><b><?php
+                  			<li id=prescriptionIdBlock"" style="display:none;"><b><?php
                     echo (Localization::translate('Prescription.Id.Label'));
                     ?>:</b> <span id="prescriptionId"></span></li>
-                    		<li><b><?php
+                    		<li id="prescriptionProgramBlock" style="display:none;"><b><?php
                     echo (Localization::translate('Prescription.Program.Label'));
                     ?>:</b> <span id="prescriptionProgram"></span></li>
-                    		<li><b><?php
+                    		<li id="prescriptionTeamBlock" style="display:none;"><b><?php
                     echo (Localization::translate('Prescription.Team.Label'));
                     ?>:</b> <span id="prescriptionTeam"></span></li>
-                    <li><b><?php
+                    		<li id="prescriptionNameBlock" style="display:none;"><b><?php
+                    echo (Localization::translate('Prescription.PatientName.Label'));
+                    ?>:</b> <span id="prescriptionName"></span></li>
+                    		<li id="prescriptionEmailBlock" style="display:none;"><b><?php
+                    echo (Localization::translate('Prescription.Email.Label'));
+                    ?>:</b> <span id="prescriptionEmail"></span></li>
+                    		<li id="prescriptionPhoneBlock" style="display:none;"><b><?php
+                    echo (Localization::translate('Prescription.Phone.Label'));
+                    ?>:</b> <span id="prescriptionPhone"></span></li>
+                    		<li id="prescriptionParticipantIdBlock" style="display:none;"><b><?php
                     echo (Localization::translate('Prescription.ParticipantId.Label'));
                     ?>:</b> <span id="prescriptionParticipantId"></span></li>
-                    <li><b><?php
+                    		<li id="prescriptionExpiresBlock" style="display:none;"><b><?php
                     echo (Localization::translate('Prescription.Expires.Label'));
                     ?>:</b> <span id="prescriptionExpires"></span></li>
-                    <li><b><?php
+                    		<li id="prescriptionRoundsBlock" style="display:none;"><b><?php
                     echo (Localization::translate('Prescription.Rounds.Label'));
                     ?>:</b> <span id="prescriptionRounds"></span></li>
                   		</ul>
           			</div>
           			
-          			<div id="personalPrescriptionInfo" style="display: none;">
-                  		<ul>
-                    		<li><b><?php
-                    echo (Localization::translate('Prescription.Program.Label'));
-                    ?>:</b> <span id="personalPrescriptionProgram"></span></li>
-                    		<li><b><?php
-                    echo (Localization::translate('Prescription.Team.Label'));
-                    ?>:</b> <span id="personalPrescriptionTeam"></span></li>
-                    <li><b><?php
-                    echo (Localization::translate('Prescription.PatientName.Label'));
-                    ?>:</b> <span id="personalPrescriptionPatientName"></span></li>
-                  		</ul>
-          			</div>
-
             		<div class="form-check" style="margin-top: 15px;">
                       	<input class="form-check-input" type="checkbox" value="" id="participant_ref">
                       	<label id="label-text" class="form-check-label" for="participant_ref">
@@ -215,40 +210,44 @@ echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang())
                     ?>';
                 } else{
                     // Fill the prescription fields
-                    //console.log(jsonPrescription);
-                    if(jsonPrescription.admissionId){
-                        //Patient QR
-                        if(jsonPrescription.program != null){
-                            $("#personalPrescriptionProgram").html(jsonPrescription.program);
-                            $("#personalPrescriptionProgram").parent().show();
-                        } else {
-                        	$("#personalPrescriptionProgram").parent().hide();
-                        }
-                        if(jsonPrescription.team != null){
-                        	$("#personalPrescriptionTeam").html(jsonPrescription.team);
-                            $("#personalPrescriptionTeam").parent().show();
-                        } else {
-                        	$("#personalPrescriptionTeam").parent().hide();
-                        }
-                        if(jsonPrescription.name != null){
-                        	$("#personalPrescriptionPatientName").html(jsonPrescription.name);
-                            $("#personalPrescriptionPatientName").parent().show();
-                        } else {
-                        	$("#personalPrescriptionPatientName").parent().hide();
-                        }                                                
-
-                        $("#personalPrescriptionInfo").show();
-                    } else {
-                        //Prescription QR                        
+                    //Prescription QR                        
+                    if(jsonPrescription.id != null && jsonPrescription.id != '') {
                         $("#prescriptionId").html(jsonPrescription.id);
-                        $("#prescriptionProgram").html(jsonPrescription.program);
-                        $("#prescriptionTeam").html(jsonPrescription.team);
-                        $("#prescriptionParticipantId").html(jsonPrescription.participantId);
-                        $("#prescriptionExpires").html(jsonPrescription.expirationDate);
-                        $("#prescriptionRounds").html(jsonPrescription.rounds);
-    
-                        $("#prescriptionInfo").show();                        
+                        $("#prescriptionIdBlock").show();
                     }
+                    if(jsonPrescription.program != null && jsonPrescription.program != '') {
+                        $("#prescriptionProgram").html(jsonPrescription.program);
+                        $("#prescriptionProgramBlock").show();
+                    }
+                    if(jsonPrescription.team != null && jsonPrescription.team != '') {
+                        $("#prescriptionTeam").html(jsonPrescription.team);
+                        $("#prescriptionTeamBlock").show();
+                    }
+                    if(jsonPrescription.name != null && jsonPrescription.name != '') {
+                        $("#prescriptionName").html(jsonPrescription.name);
+                        $("#prescriptionNameBlock").show();
+                    }
+                    if(jsonPrescription.email != null && jsonPrescription.email != '') {
+                        $("#prescriptionEmail").html(jsonPrescription.email);
+                        $("#prescriptionEmailBlock").show();
+                    }
+                    if(jsonPrescription.phone != null && jsonPrescription.phone != '') {
+                        $("#prescriptionPhone").html(jsonPrescription.phone);
+                        $("#prescriptionPhoneBlock").show();
+                    }
+                    if(jsonPrescription.participantId != null && jsonPrescription.participantId != '') {
+                        $("#prescriptionParticipantId").html(jsonPrescription.participantId);
+                        $("#prescriptionParticipantIdBlock").show();
+                    }
+                    if(jsonPrescription.expirationDate != null && jsonPrescription.expirationDate != '') {
+                       $("#prescriptionExpires").html(jsonPrescription.expirationDate);
+                       $("#prescriptionExpiresBlock").show();
+                    }
+                    if(jsonPrescription.rounds != null) {
+                       $("#prescriptionRounds").html(jsonPrescription.rounds);
+                       $("#prescriptionRoundsBlock").show();
+                    }
+                    $("#prescriptionInfo").show();                        
 
                     //Now that a prescription has been scanned, hide the rest of the page
                     $("#participant_ref").hide();

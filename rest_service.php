@@ -631,7 +631,7 @@ function initializeAdmission($kitInfo, $prescription, $caseId, $subscriptionId, 
         }
 
         if ($prescription && $prescription->getSurname()) {
-            $contactInfo->setSurname($prescription->getSurname());
+            $contactInfo->setFamilyName($prescription->getSurname());
         }
 
         if ($prescription && $prescription->getEmail()) {
