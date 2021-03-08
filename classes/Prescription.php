@@ -95,10 +95,7 @@ class Prescription {
     }
 
     function getExpirationDate() {
-        if ($this->prescriptionData->expiration) {
-            return $this->formatDate($this->prescriptionData->expiration);
-        }
-        return null;
+        $this->prescriptionData->expiration;
     }
 
     function getParticipantId() {
@@ -219,13 +216,6 @@ class Prescription {
     // **************************************************************
     // PRIVATE FUNCTIONS
     // **************************************************************
-    private function formatDate($str) {
-        $year = substr($str, 0, 4);
-        $month = substr($str, 4, 2);
-        $day = substr($str, 6, 2);
-        return "$year-$month-$day";
-    }
-
     /**
      * Returns the check digit for a string
      * The calculation is done using a Luhn Mod N algorithm, using as base N=36 (numbers and A-Z uppercase letters)
