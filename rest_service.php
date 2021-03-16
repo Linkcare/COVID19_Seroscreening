@@ -82,7 +82,10 @@ function processKit($kitInfo, $subscriptionId = null) {
     }
 
     // Find out if there exists a patient assigned to the Kit ID
-    $casesByDevice = $api->case_search("SEROSCREENING:" . $kitInfo->getId() . "");
+    $searchCondition = new StdClass();
+    $searchCondition->device = new StdClass();
+    $searchCondition->device->id = 'SEROSCREENING:' . $kitInfo->getId();
+    $casesByDevice = $api->case_search(json_encode($searchCondition));
     if ($api->errorCode()) {
         throw new APIException($api->errorCode(), $api->errorMessage());
     }
