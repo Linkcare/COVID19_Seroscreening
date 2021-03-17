@@ -63,6 +63,11 @@ if ($dbConnResult === true) {
             header('Content-Type: application/json');
             echo $prescription->toJSON();
             break;
+
+        case 'check_test_results' :
+            header('Content-Type: application/json');
+            echo rand(0, 2);
+            break;
     }
 }
 ?>
