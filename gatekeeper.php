@@ -110,6 +110,9 @@ if ($dbConnResult !== true) {
             		<div class="circle red" style="display: none;"></div>
             		<div class="circle green" style="display: none;"></div>
             		<div class="orange-question" style="display: none;">?</div>
+            		<div class="hourglass" style="display:none;">
+            			<img src="img/hourglass.png" style="height: 200px;" />
+            		</div>
             	</div>
     		</div>
     		
@@ -168,16 +171,19 @@ if ($dbConnResult !== true) {
             $.post(
     			'actions.php',
                 {action: 'check_test_results', id: result},
-                function(positive){
-                    if(positive == 0){
+                function(ret){
+                    if(ret.result == 0){
                     	$("div.orange-question").show();
                         $("#audio-error")[0].play();
-                    }else if(positive == 1){
-                    	$("div.circle.red").show();
-                        $("#audio-error")[0].play();
-                    }else if(positive == 2){
+                    }else if(ret.result == 1){
                     	$("div.circle.green").show();
                         $("#audio-success")[0].play();
+                    }else if(ret.result == 2){
+                        $("div.circle.red").show();
+                        $("#audio-error")[0].play();                    	
+                    }else if(ret.result == 3){
+                        $("div.hourglass").show();
+                        $("#audio-error")[0].play();                    	
                     }
                 });
                 
