@@ -107,10 +107,10 @@ if ($dbConnResult !== true) {
     		</div>
     		<div class="row">
     			<div class="col-lg-12 col-md-12 text-center" style="padding: 5; height: 250px; padding-top: 20px;">
-            		<div class="circle red" style="display: none;"></div>
-            		<div class="circle green" style="display: none;"></div>
-            		<div class="orange-question" style="display: none;">?</div>
-            		<div class="hourglass" style="display:none;">
+            		<div class="circle red j_qr-result" style="display: none;"></div>
+            		<div class="circle green j_qr-result" style="display: none;"></div>
+            		<div class="orange-question j_qr-result" style="display: none;">?</div>
+            		<div class="hourglass j_qr-result" style="display:none;">
             			<img src="img/hourglass.png" style="height: 200px;" />
             		</div>
             	</div>
@@ -212,9 +212,7 @@ if ($dbConnResult !== true) {
             //else add the scanner button listener functionality
             document.getElementById('start-button').addEventListener('click', () => {
                 // Hide the past results
-                $("div.circle.red").hide();
-                $("div.circle.green").hide();
-                $("div.orange-question").hide();
+                $("div.j_qr-result").hide();
 
                 // Necessary in order to be able to play the success/error afterwards
                 $("#audio-blank")[0].play();
