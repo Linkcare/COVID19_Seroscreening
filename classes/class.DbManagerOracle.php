@@ -121,7 +121,7 @@ class DbManagerOracle extends DbManager {
 
         $this->SetError($error);
         if ($this->error) {
-            logw(json_encode(end(array_filter($this->error))) . $query . PHP_EOL . json_encode(debug_backtrace()), 'error');
+            // logw(json_encode(end(array_filter($this->error))) . $query . PHP_EOL . json_encode(debug_backtrace()), 'error');
         }
 
         if ($isQuery) {
@@ -137,7 +137,7 @@ class DbManagerOracle extends DbManager {
                     $file = $callers[0]['file'];
                     $line = $callers[0]['line'];
                     $file = end(explode('/', $file)) . PHP_EOL . $line;
-                    log_start_write("", "sql", todayUTC(), $function . PHP_EOL . $file, '', $brCounter->elapsed(), $query);
+                    // log_start_write("", "sql", todayUTC(), $function . PHP_EOL . $file, '', $brCounter->elapsed(), $query);
                 }
             }
         }
@@ -225,8 +225,8 @@ class DbManagerOracle extends DbManager {
                     $minVariables[$ix] = $v;
                 }
             }
-            logw(json_encode(end($this->error)) . PHP_EOL . json_encode($minVariables) . PHP_EOL . $query . PHP_EOL . json_encode(debug_backtrace()),
-                    'error');
+            // logw(json_encode(end($this->error)) . PHP_EOL . json_encode($minVariables) . PHP_EOL . $query . PHP_EOL .
+            // json_encode(debug_backtrace()), 'error');
         }
 
         if ($isQuery) {
@@ -243,8 +243,8 @@ class DbManagerOracle extends DbManager {
                     $line = $callers[0]['line'];
                     $file = end(explode('/', $file)) . PHP_EOL . $line;
                     // log only "valid" query without variables
-                    log_start_write("", "sql", todayUTC(), $function . PHP_EOL . $file, '', $brCounter->elapsed(),
-                            json_encode($arrVariables) . "\n$query");
+                    // log_start_write("", "sql", todayUTC(), $function . PHP_EOL . $file, '', $brCounter->elapsed(), json_encode($arrVariables) .
+                    // "\n$query");
                 }
             }
         }
@@ -324,7 +324,7 @@ class DbManagerOracle extends DbManager {
 
         $this->SetError($error);
         if ($this->error) {
-            logw(json_encode(end($this->error)) . PHP_EOL . $query . json_encode(debug_backtrace()), 'error');
+            // logw(json_encode(end($this->error)) . PHP_EOL . $query . json_encode(debug_backtrace()), 'error');
         }
 
         if ($log) {
@@ -336,8 +336,8 @@ class DbManagerOracle extends DbManager {
                     $line = $callers[0]['line'];
                     $file = end(explode('/', $file)) . PHP_EOL . $line;
                     // log only "valid" query without variables
-                    log_start_write("", "sql", todayUTC(), $function . PHP_EOL . $file, '', $brCounter->elapsed(),
-                            json_encode($arrVariables) . "\n$query");
+                    // log_start_write("", "sql", todayUTC(), $function . PHP_EOL . $file, '', $brCounter->elapsed(), json_encode($arrVariables) .
+                    // "\n$query");
                 }
             }
         }
@@ -414,7 +414,7 @@ class DbManagerOracle extends DbManager {
 
         $this->SetError($error);
         if ($this->error) {
-            logw(json_encode(end($this->error)) . PHP_EOL . $query . json_encode(debug_backtrace()), 'error');
+            // logw(json_encode(end($this->error)) . PHP_EOL . $query . json_encode(debug_backtrace()), 'error');
         }
 
         if ($log) {
@@ -426,8 +426,8 @@ class DbManagerOracle extends DbManager {
                     $line = $callers[0]['line'];
                     $file = end(explode('/', $file)) . PHP_EOL . $line;
                     // log only "valid" query without variables
-                    log_start_write("", "sql", todayUTC(), $function . PHP_EOL . $file, '', $brCounter->elapsed(),
-                            json_encode($arrVariables) . "\n$query");
+                    // log_start_write("", "sql", todayUTC(), $function . PHP_EOL . $file, '', $brCounter->elapsed(), json_encode($arrVariables) .
+                    // "\n$query");
                 }
             }
         }

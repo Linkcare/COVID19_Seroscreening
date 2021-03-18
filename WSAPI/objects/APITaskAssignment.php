@@ -3,6 +3,7 @@
 class APITaskAssignment {
     const CASE_MANAGER = 24;
     const SERVICE = 47;
+    const PATIENT = 39;
 
     // Private members
     private $teamId;

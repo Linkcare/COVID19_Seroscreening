@@ -12,6 +12,7 @@ require_once 'classes/ErrorInfo.php';
 require_once "classes/Localization.php";
 require_once "classes/LC2Action.php";
 require_once "classes/Prescription.php";
+require_once "functions.php";
 
 $GLOBALS['COMMIT'] = true;
 $GLOBALS["DBConnection_URI"] = "oci://covid_kits:xxxxxx@dbproduction.linkcareapp.com:1521/linkcare";
@@ -38,13 +39,15 @@ $GLOBALS["TASK_CODES"]["PRESCRIPTION_INFO"] = "PRESCRIPTION_INFO";
 $GLOBALS["TASK_CODES"]["REGISTER_KIT"] = "REGISTER_KIT";
 $GLOBALS["TASK_CODES"]["SCAN_KIT"] = "SCAN_KIT";
 $GLOBALS["TASK_CODES"]["KIT_RESULTS"] = "KIT_RESULTS";
-$GLOBALS["TASK_CODES"]["HEALTH_FORFAIT"] = "PERSONAL_QR";
+$GLOBALS["TASK_CODES"]["HEALTH_FORFAIT"] = "PERSONAL_QR"; // Task where a PROFESSIONAL can scan the KIT ID
+$GLOBALS["TASK_CODES"]["SCAN_KIT_LINK"] = "SCAN_KIT_LINK"; // Task where a PATIENT can scan the KIT ID
 
 $GLOBALS["FORM_CODES"]["KIT_INFO"] = "KIT_INFO_FORM";
 $GLOBALS["FORM_CODES"]["REGISTER_KIT"] = "KIT_CHECKLIST";
 $GLOBALS["FORM_CODES"]["PRESCRIPTION_INFO"] = "PRESCRIPTION_INFO_FORM";
 $GLOBALS["FORM_CODES"]["KIT_RESULTS"] = "KIT_INFO_DATA2";
-$GLOBALS["FORM_CODES"]["HEALTH_FORFAIT"] = "PERSONAL_QR_FORM";
+$GLOBALS["FORM_CODES"]["HEALTH_FORFAIT"] = "PERSONAL_QR_FORM"; // Form where a PROFESSIONAL can scan the KIT ID
+$GLOBALS["FORM_CODES"]["SCAN_KIT_LINK"] = "SCAN_KIT_LINK_FORM"; // Form where a PATIENT can scan the KIT ID
 
 // ID of the KIT_INFO FORM questions
 $GLOBALS["KIT_INFO_Q_ID"]["KIT_ID"] = 1;
@@ -65,6 +68,7 @@ $GLOBALS["REGISTER_KIT_Q_ID"]["REGISTER_STATUS"] = 1;
 
 // ID of the HEALTH_FORFAIT FORM questions
 $GLOBALS["HEALTH_FORFAIT"]["KIT_ID"] = 4;
+$GLOBALS["SCAN_KIT_LINK_Q_ID"]["KIT_ID"] = 1;
 
 // Other configuration variables
 
