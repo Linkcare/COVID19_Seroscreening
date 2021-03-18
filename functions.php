@@ -1124,7 +1124,8 @@ function checkTestResults($participantQR) {
 
     $qr = new Prescription($participantQR);
     if (!$qr->isValid()) {
-        return $results->result = DIAGNOSTIC_UNKNOWN;
+        $results->error = 'Invalid QR';
+        return $results;
     }
 
     try {
@@ -1204,7 +1205,7 @@ function checkTestResults($participantQR) {
             $programId = $rst->GetField('ID_PROGRAMA');
             $count++;
         }
-        if ($count != 1) {
+        if ($count > 1) {
             $results->error = 'More than one participant found with the same prescription ' . $qr->getId();
             return $results;
         }
