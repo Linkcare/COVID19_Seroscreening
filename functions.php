@@ -1098,6 +1098,7 @@ function updateKitStatusRemote($kitId, $status) {
 const DIAGNOSTIC_UNKNOWN = 0;
 const DIAGNOSTIC_NEGATIVE = 1;
 const DIAGNOSTIC_POSITIVE = 2;
+const DIAGNOSTIC_IN_PROGRESS = 3;
 
 /**
  * Given a $participantQR, the functions locates the participant and returns the result of the last test.
@@ -1182,8 +1183,10 @@ function checkTestResults($participantQR) {
             return $results;
         }
 
-        $arrVariables = [':programId' => $programId, ':teamId' => $teamId];
-        $sql = "SELECT p.IIDPATPATIENT FROM IDENTIFIERS i, TBPATPATIENT p WHERE i.CODE ='PARTICIPANT_REF' AND p.IIDGNRPERSON = i.PERSON_ID AND PROGRAM_ID = :programId AND TEAM_ID = :teamId";
+        $arrVariables = [':programId' => $programId, ':teamId' => $teamId, ':participantId' => $qr->getParticipantId()];
+        $sql = "SELECT p.IIDPATPATIENT FROM IDENTIFIERS i, TBPATPATIENT p 
+            WHERE i.CODE ='PARTICIPANT_REF' AND VALUE = :participantId 
+                AND p.IIDGNRPERSON = i.PERSON_ID AND PROGRAM_ID = :programId AND TEAM_ID = :teamId";
         $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
         if ($rst->Next()) {
             $patientId = $rst->GetField('IIDPATPATIENT');
@@ -1215,14 +1218,22 @@ function checkTestResults($participantQR) {
         // It is necessary to know PROGRAM and PATIENT
         return $results;
     }
-    // Find the most recent ADMISSION (finished) of the PATIENT in the desired PROGRAM and obtain the OUTCOME
+    /*
+     * Find the most recent ADMISSION (finished) of the PATIENT in the desired PROGRAM and obtain the OUTCOME
+     * Only use ENROLLED, ACTIVE or DISCHARGED ADMISSIONs
+     */
     $arrVariables = [':patientId' => $patientId, ':programId' => $programId];
-    $sql = 'SELECT OUTCOME,DTADMISSIONDATE FROM TBPRGPATIENTPROGRAMME t WHERE IIDPATPATIENT = :patientId AND ID_PROGRAMA = :programId AND DELETED IS NULL AND OUTCOME > 0 ORDER BY DTADMISSIONDATE DESC';
+    $sql = "SELECT OUTCOME,DTADMISSIONDATE,IIDPRGPATIENTPROGRAMMESTATE FROM TBPRGPATIENTPROGRAMME t 
+            WHERE IIDPATPATIENT = :patientId AND ID_PROGRAMA = :programId 
+                AND DELETED IS NULL
+                AND IIDPRGPATIENTPROGRAMMESTATE IN (1,4,5)
+                ORDER BY DTADMISSIONDATE DESC";
     $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
     $outcome = null;
     if ($rst->Next()) {
         $outcome = $rst->GetField('OUTCOME');
         $results->date = $rst->getField('DTADMISSIONDATE');
+        $admissionStatus = $rst->getField('IIDPRGPATIENTPROGRAMMESTATE');
     }
 
     switch ($outcome) {
@@ -1232,6 +1243,11 @@ function checkTestResults($participantQR) {
         case 5 :
             $results->result = DIAGNOSTIC_POSITIVE;
             break;
+        default :
+            if (in_array($admissionStatus, [1, 5])) {
+                // ACTIVE or ENROLLED
+                $results->result = DIAGNOSTIC_IN_PROGRESS;
+            }
     }
     return $results;
 }
