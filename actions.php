@@ -65,8 +65,11 @@ if ($dbConnResult === true) {
             break;
 
         case 'check_test_results' :
-            header('Content-Type: application/json');
-            echo rand(0, 2);
+            if (isset($_POST['id'])) {
+                $res = checkTestResults($_POST['id']);
+                header('Content-Type: application/json');
+                echo json_encode($res);
+            }
             break;
     }
 }
