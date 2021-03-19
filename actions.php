@@ -109,7 +109,7 @@ function storeGatekeeperTracking($testResult, $qr) {
     $arrVariables[':created'] = $today;
     $arrVariables[':patientId'] = $testResult->patientId;
     $arrVariables[':admissionId'] = $testResult->admissionId;
-    $arrVariables[':outcome'] = $testResult->outcome;
+    $arrVariables[':outcome'] = $testResult->output;
     $arrVariables[':testResult'] = $testResult->result;
     $arrVariables[':ipAddress'] = $ipAddress;
     $arrVariables[':qr'] = $qr;

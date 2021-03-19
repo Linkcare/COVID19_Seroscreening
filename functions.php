@@ -1124,7 +1124,7 @@ function checkTestResults($participantQR) {
     $results->error = '';
     $results->patientId = null;
     $results->admissionId = null;
-    $results->outcome = null;
+    $results->output = null;
 
     $qr = new Prescription($participantQR);
     if (!$qr->isValid()) {
@@ -1223,26 +1223,26 @@ function checkTestResults($participantQR) {
     }
     $results->patientId = $patientId;
     /*
-     * Find the most recent ADMISSION (finished) of the PATIENT in the desired PROGRAM and obtain the OUTCOME
+     * Find the most recent ADMISSION (finished) of the PATIENT in the desired PROGRAM and obtain the OUTPUT
      * Only use ENROLLED, ACTIVE or DISCHARGED ADMISSIONs
      */
     $arrVariables = [':patientId' => $patientId, ':programId' => $programId];
-    $sql = "SELECT IIDPATIENTPROGRAMME, OUTCOME,DTADMISSIONDATE,IIDPRGPATIENTPROGRAMMESTATE FROM TBPRGPATIENTPROGRAMME t 
+    $sql = "SELECT IIDPATIENTPROGRAMME, OUTPUT,DTADMISSIONDATE,IIDPRGPATIENTPROGRAMMESTATE FROM TBPRGPATIENTPROGRAMME t 
             WHERE IIDPATPATIENT = :patientId AND ID_PROGRAMA = :programId 
                 AND DELETED IS NULL
                 AND IIDPRGPATIENTPROGRAMMESTATE IN (1,4,5)
                 ORDER BY DTADMISSIONDATE DESC";
     $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
-    $outcome = null;
+    $output = null;
     if ($rst->Next()) {
-        $outcome = $rst->GetField('OUTCOME');
+        $output = $rst->GetField('OUTPUT');
         $results->date = $rst->getField('DTADMISSIONDATE');
         $admissionStatus = $rst->getField('IIDPRGPATIENTPROGRAMMESTATE');
         $results->admissionId = $rst->GetField('IIDPATIENTPROGRAMME');
-        $results->outcome = $outcome;
+        $results->output = $output;
     }
 
-    switch ($outcome) {
+    switch ($output) {
         case 2 :
             $results->result = DIAGNOSTIC_NEGATIVE;
             break;
