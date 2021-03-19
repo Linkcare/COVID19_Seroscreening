@@ -1122,6 +1122,9 @@ function checkTestResults($participantQR) {
     $results->result = DIAGNOSTIC_UNKNOWN;
     $results->date = '';
     $results->error = '';
+    $results->patientId = null;
+    $results->admissionId = null;
+    $results->outcome = null;
 
     $qr = new Prescription($participantQR);
     if (!$qr->isValid()) {
@@ -1218,12 +1221,13 @@ function checkTestResults($participantQR) {
         // It is necessary to know PROGRAM and PATIENT
         return $results;
     }
+    $results->patientId = $patientId;
     /*
      * Find the most recent ADMISSION (finished) of the PATIENT in the desired PROGRAM and obtain the OUTCOME
      * Only use ENROLLED, ACTIVE or DISCHARGED ADMISSIONs
      */
     $arrVariables = [':patientId' => $patientId, ':programId' => $programId];
-    $sql = "SELECT OUTCOME,DTADMISSIONDATE,IIDPRGPATIENTPROGRAMMESTATE FROM TBPRGPATIENTPROGRAMME t 
+    $sql = "SELECT IIDPATIENTPROGRAMME, OUTCOME,DTADMISSIONDATE,IIDPRGPATIENTPROGRAMMESTATE FROM TBPRGPATIENTPROGRAMME t 
             WHERE IIDPATPATIENT = :patientId AND ID_PROGRAMA = :programId 
                 AND DELETED IS NULL
                 AND IIDPRGPATIENTPROGRAMMESTATE IN (1,4,5)
@@ -1234,6 +1238,8 @@ function checkTestResults($participantQR) {
         $outcome = $rst->GetField('OUTCOME');
         $results->date = $rst->getField('DTADMISSIONDATE');
         $admissionStatus = $rst->getField('IIDPRGPATIENTPROGRAMMESTATE');
+        $results->admissionId = $rst->GetField('IIDPATIENTPROGRAMME');
+        $results->outcome = $outcome;
     }
 
     switch ($outcome) {
