@@ -82,6 +82,7 @@ function processKit($kitInfo, $subscriptionId = null) {
         throw new APIException($api->errorCode(), $api->errorMessage());
     }
     if (!empty($casesByDevice)) {
+        /* @var APICase $caseByDevice */
         $caseByDevice = $casesByDevice[0];
     }
 
@@ -104,22 +105,35 @@ function processKit($kitInfo, $subscriptionId = null) {
 
     // Find the target SUBSCRIPTION (only if we don't know the ADMISSION
     if (!$prescription || !$prescription->getAdmissionId()) {
-        if ($subscriptionId) {
-            // An specific SUBSCRIPTION ID has been provided
-            $subscription = $api::getInstance()->subscription_get(null, null, $subscriptionId);
-            if ($api->errorCode()) {
-                throw new APIException($api->errorCode(), $api->errorMessage());
+        if ($api->getSession()->getRoleId() == 39 && $caseByDevice) {
+            /*
+             * We are in 'patient' mode and the KIT_ID is associated to a CASE.
+             * In this case the active session user must be the same CASE found
+             */
+            if ($api->getSession()->getCaseId() != $caseByDevice->getId()) {
+                // ERROR! The kit is not assigned to the active session user
+                $lc2Action = new LC2Action(LC2Action::KIT_ALREADY_USED);
+                return $lc2Action;
             }
         } else {
-            $subscriptions = findSubscription($prescription, $kitInfo->getProgramCode());
-            /* @var APISubscription $subscription */
-            $subscription = empty($subscriptions) ? null : reset($subscriptions);
-            if (count($subscriptions) > 1) {
-                // The user must select a SUBSCRIPTION
-                $lc2Action = new LC2Action(LC2Action::ACTION_SERVICE_REQUEST);
-                $lc2Action->setProgramId($subscription->getProgram()->getId());
-                $lc2Action->setRequestType(LC2Action::REQUEST_SUBSCRIPTION);
-                return $lc2Action;
+            // We are in professional mode
+            if ($subscriptionId) {
+                // An specific SUBSCRIPTION ID has been provided
+                $subscription = $api::getInstance()->subscription_get(null, null, $subscriptionId);
+                if ($api->errorCode()) {
+                    throw new APIException($api->errorCode(), $api->errorMessage());
+                }
+            } else {
+                $subscriptions = findSubscription($prescription, $kitInfo->getProgramCode());
+                /* @var APISubscription $subscription */
+                $subscription = empty($subscriptions) ? null : reset($subscriptions);
+                if (count($subscriptions) > 1) {
+                    // The user must select a SUBSCRIPTION
+                    $lc2Action = new LC2Action(LC2Action::ACTION_SERVICE_REQUEST);
+                    $lc2Action->setProgramId($subscription->getProgram()->getId());
+                    $lc2Action->setRequestType(LC2Action::REQUEST_SUBSCRIPTION);
+                    return $lc2Action;
+                }
             }
         }
     }
