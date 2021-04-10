@@ -113,6 +113,9 @@ if ($dbConnResult !== true) {
             		<div class="hourglass j_qr-result" style="display:none;">
             			<img src="img/hourglass.png" style="height: 200px;" />
             		</div>
+            		<div class="expired j_qr-result" style="display:none;">
+            			<img src="img/expired.png" style="height: 200px;" />
+            		</div>
             	</div>
     		</div>
     		
@@ -173,16 +176,24 @@ if ($dbConnResult !== true) {
                 {action: 'check_test_results', id: result},
                 function(ret){
                     if(ret.result == 0){
+                        // No test available
                     	$("div.orange-question").show();
                         $("#audio-error")[0].play();
                     }else if(ret.result == 1){
+                        // Test negative
                     	$("div.circle.green").show();
                         $("#audio-success")[0].play();
                     }else if(ret.result == 2){
+                        // Test positive
                         $("div.circle.red").show();
                         $("#audio-error")[0].play();                    	
                     }else if(ret.result == 3){
+                        // Test in progress
                         $("div.hourglass").show();
+                        $("#audio-error")[0].play();                    	
+                    }else if(ret.result == 4){
+                        // Test expired
+                        $("div.expired").show();
                         $("#audio-error")[0].play();                    	
                     }
                 });

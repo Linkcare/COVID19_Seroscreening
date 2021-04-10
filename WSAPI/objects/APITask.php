@@ -1,6 +1,11 @@
 <?php
 
 class APITask {
+    const STATUS_NOT_ASSIGNED = 11;
+    const STATUS_NOT_DONE = 12;
+    const STATUS_DONE = 13;
+
+    // Private members
     private $id;
     private $taskCode;
     private $name;

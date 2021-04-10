@@ -1113,6 +1113,7 @@ const DIAGNOSTIC_UNKNOWN = 0;
 const DIAGNOSTIC_NEGATIVE = 1;
 const DIAGNOSTIC_POSITIVE = 2;
 const DIAGNOSTIC_IN_PROGRESS = 3;
+const DIAGNOSTIC_EXPIRED = 4;
 
 /**
  * Given a $participantQR, the functions locates the participant and returns the result of the last test.
@@ -1139,6 +1140,7 @@ function checkTestResults($participantQR) {
     $results->patientId = null;
     $results->admissionId = null;
     $results->output = null;
+    $results->expiration = null;
 
     $qr = new Prescription($participantQR);
     if (!$qr->isValid()) {
@@ -1201,8 +1203,8 @@ function checkTestResults($participantQR) {
         }
 
         $arrVariables = [':programId' => $programId, ':teamId' => $teamId, ':participantId' => $qr->getParticipantId()];
-        $sql = "SELECT p.IIDPATPATIENT FROM IDENTIFIERS i, TBPATPATIENT p 
-            WHERE i.CODE ='PARTICIPANT_REF' AND VALUE = :participantId 
+        $sql = "SELECT p.IIDPATPATIENT FROM IDENTIFIERS i, TBPATPATIENT p
+            WHERE i.CODE ='PARTICIPANT_REF' AND VALUE = :participantId
                 AND p.IIDGNRPERSON = i.PERSON_ID AND PROGRAM_ID = :programId AND TEAM_ID = :teamId";
         $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
         if ($rst->Next()) {
@@ -1212,9 +1214,9 @@ function checkTestResults($participantQR) {
         /* We know the PRESCRIPTION ID. Use it to obtain the ADMISSION, and then the PATIENT and PROGRAM */
         $arrVariables = ['prescriptionId' => $qr->getId()];
         $sql = "SELECT DISTINCT a.IIDPATPATIENT, a.ID_PROGRAMA FROM TBPRGPATIENTPROGRAMME a, PRESTACIONES_INGRESO t, CUESTIONARIOS c ,RESPUESTAS r
-                WHERE 
-                	a.DELETED IS NULL 
-                	AND t.ID_INGRESO = a.IIDPATIENTPROGRAMME AND t.DELETED IS NULL 
+                WHERE
+                	a.DELETED IS NULL
+                	AND t.ID_INGRESO = a.IIDPATIENTPROGRAMME AND t.DELETED IS NULL
                 	AND c.TASK_ID  = t.ID_PRESTACION_INGRESO AND c.DELETED IS NULL
                 	AND r.ID_CUESTIONARIO = c.ID_CUESTIONARIO AND r.DATA_CODE = 'PRESCRIPTION_ID' AND r.RESPUESTA = :prescriptionId";
 
@@ -1237,38 +1239,68 @@ function checkTestResults($participantQR) {
     }
     $results->patientId = $patientId;
     /*
-     * Find the most recent ADMISSION (finished) of the PATIENT in the desired PROGRAM and obtain the OUTPUT
+     * Find the last ADMISSION of the PATIENT in the desired PROGRAM with a finished TEST and obtain the OUTPUT
      * Only use ENROLLED, ACTIVE or DISCHARGED ADMISSIONs
      */
     $arrVariables = [':patientId' => $patientId, ':programId' => $programId];
-    $sql = "SELECT IIDPATIENTPROGRAMME, OUTPUT,DTADMISSIONDATE,IIDPRGPATIENTPROGRAMMESTATE FROM TBPRGPATIENTPROGRAMME t 
-            WHERE IIDPATPATIENT = :patientId AND ID_PROGRAMA = :programId 
-                AND DELETED IS NULL
-                AND IIDPRGPATIENTPROGRAMMESTATE IN (1,4,5)
-                ORDER BY DTADMISSIONDATE DESC";
+    $sql = "SELECT adm.IIDPATIENTPROGRAMME, adm.OUTPUT, adm.OUTPUT_VALIDITY, pi.FECHA_HORA_FIN AS TEST_DATE, pi.ID_ESTADO
+        	FROM TBPRGPATIENTPROGRAMME adm , PRESTACIONES_INGRESO pi
+        	WHERE IIDPATPATIENT = :patientId AND ID_PROGRAMA = :programId
+        	    AND adm.DELETED IS NULL
+        	    AND adm.IIDPRGPATIENTPROGRAMMESTATE IN (1,4,5)
+        	    AND pi.ID_INGRESO = adm.IIDPATIENTPROGRAMME
+        	    AND pi.DELETED IS NULL
+        	    AND pi.TASK_CODE = 'KIT_RESULTS'            
+            ORDER BY pi.FECHA_HORA_FIN DESC NULLS FIRST";
+
     $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
-    $output = null;
-    if ($rst->Next()) {
-        $output = $rst->GetField('OUTPUT');
-        $results->date = $rst->getField('DTADMISSIONDATE');
-        $admissionStatus = $rst->getField('IIDPRGPATIENTPROGRAMMESTATE');
+    $existsTestInProgress = false;
+    while ($rst->Next()) {
+        if ($rst->GetField('ID_ESTADO') != APITask::STATUS_DONE) {
+            $existsTestInProgress = true;
+        }
+        // Verify that the result is still valid
+        $results->output = $rst->GetField('OUTPUT');
+        $results->date = $rst->getField('TEST_DATE');
         $results->admissionId = $rst->GetField('IIDPATIENTPROGRAMME');
-        $results->output = $output;
+
+        switch ($results->output) {
+            case 2 :
+                $results->result = DIAGNOSTIC_NEGATIVE;
+                break;
+            case 5 :
+                $results->result = DIAGNOSTIC_POSITIVE;
+                break;
+            default :
+                if ($existsTestInProgress) {
+                    // ACTIVE or ENROLLED
+                    $results->result = DIAGNOSTIC_IN_PROGRESS;
+                }
+        }
+
+        $expiration = $rst->GetField('OUTPUT_VALIDITY');
+        if ($expiration) {
+            // Verify that the test is still valid
+            $results->expiration = $expiration;
+
+            $sql = 'SELECT u.TIMEZONE FROM TBPATPATIENT p, TBGNRUSER u WHERE p.IIDPATPATIENT = :id AND u.IIDGNRPERSON = p.IIDGNRPERSON';
+            $rstTimezone = Database::getInstance()->ExecuteBindQuery($sql, $patientId);
+            if ($rstTimezone->Next()) {
+                $timezone = $rstTimezone->GetField('TIMEZONE');
+            } else {
+                $timezone = 0;
+            }
+
+            $currentDate = currentDate($timezone);
+            if ($results->expiration < $currentDate) {
+                // The test has expired
+                $results->result = $existsTestInProgress ? DIAGNOSTIC_IN_PROGRESS : DIAGNOSTIC_EXPIRED;
+            }
+        }
+        // We have found a finished test. There is no need to check older tests
+        break;
     }
 
-    switch ($output) {
-        case 2 :
-            $results->result = DIAGNOSTIC_NEGATIVE;
-            break;
-        case 5 :
-            $results->result = DIAGNOSTIC_POSITIVE;
-            break;
-        default :
-            if (in_array($admissionStatus, [1, 5])) {
-                // ACTIVE or ENROLLED
-                $results->result = DIAGNOSTIC_IN_PROGRESS;
-            }
-    }
     return $results;
 }
 ?>

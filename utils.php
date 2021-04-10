@@ -164,12 +164,36 @@ function currentDate($timezone = null) {
     $dateUTC = $datetime->format('Y\-m\-d\ H:i:s');
 
     if ($timezone === null) {
-        $timezone = 0;
+        return $dateUTC;
     }
 
-    // Some timezones are not an integer number of hours
-    $timezone = intval($timezone * 60);
-    $dateInTimezone = date('Y-m-d H:i:s', strtotime("$timezone minutes", strtotime($dateUTC)));
+    if (startsWith('UTC+', $timezone)) {
+        $timezone = explode('UTC+', $timezone)[1];
+    } elseif (startsWith('UTC-', $timezone)) {
+        $timezone = -explode('UTC-', $timezone)[1];
+    }
+
+    if (is_numeric($timezone)) {
+        // Some timezones are not an integer number of hours
+        $timezone = intval($timezone * 60);
+        $d = strtotime($dateUTC);
+        if (!$d) {
+            $d = strtotime(todayUTC());
+        }
+        $dateInTimezone = date('Y-m-d H:i:s', strtotime("$timezone minutes", $d));
+    } else {
+        try {
+            $datetime = new DateTime($dateUTC);
+            $tz_object = new DateTimeZone($timezone);
+            $datetime->setTimezone($tz_object);
+        } catch (Exception $e) {
+            // If an invalid timezone has been provided, ignore it
+            if (!$datetime) {
+                $datetime = new DateTime();
+            }
+        }
+        $dateInTimezone = $datetime->format('Y-m-d H:i:s');
+    }
     return $dateInTimezone;
 }
 
