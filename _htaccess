@@ -1,8 +1,0 @@
-Options -Indexes
-<Files .htaccess>
-  Deny from all
-</Files>
-
-<Files default_conf.php>
-  Deny from all
-</Files>

@@ -1,22 +1,34 @@
 <?php
-// POST functions
-require_once 'default_conf.php';
+require_once 'lib/default_conf.php';
+require_once 'lib/gatekeeper_functions.php';
 
-if ($_POST['action'] == 'check_test_results') {
+if ($_GET['action'] == 'check_test_results') {
     // Gatekeeper action
-    if (isset($_POST['id'])) {
-        $res = checkTestResults($_POST['id']);
-        header('Content-Type: application/json');
-        echo json_encode($res);
-
-        try {
-            $dbConnResult = Database::init($GLOBALS["DBConnection_URI"]);
-
-            if ($dbConnResult === true) {
-                storeGatekeeperTracking($res, $_POST['id']);
-            }
-        } catch (Exception $e) {}
+    if (isset($_GET['qr'])) {
+        $prescription = new Prescription($_GET['qr']);
+    } else {
+        $prescription = new Prescription(null, $_GET['participant_id']);
+        $prescription->setProgram($_GET['program']);
+        $prescription->setTeam($_GET['team']);
     }
+    $testInfo = checkTestResults($prescription);
+
+    header('Content-Type: application/json');
+    // Pass only the necessary information as response to the request
+    $res = new stdClass();
+    $res->result = $testInfo->result;
+    $res->date = $testInfo->date;
+    $res->expiration = $testInfo->expiration;
+    $res->error = $testInfo->error;
+    echo json_encode($res);
+
+    try {
+        $dbConnResult = Database::init($GLOBALS["DBConnection_URI"]);
+
+        if ($dbConnResult === true) {
+            storeGatekeeperTracking($res, json_encode($_GET));
+        }
+    } catch (Exception $e) {}
 } else {
     // LC2 actions
     if (isset($_SESSION["KIT"])) {
@@ -31,13 +43,13 @@ if ($_POST['action'] == 'check_test_results') {
 
     if ($dbConnResult === true) {
         // A POST request has been received informing about a scanned Prescription
-        switch ($_POST['action']) {
+        switch ($_GET['action']) {
             case 'process_kit' :
                 if ($kit->getStatus() == KitInfo::STATUS_NOT_USED) {
                     /* The Kit status is: not used */
                     header('Content-Type: application/text');
-                    if (isset($_POST['lang'])) {
-                        $language = $_POST['lang'];
+                    if (isset($_GET['lang'])) {
+                        $language = $_GET['lang'];
                     } else {
                         $language = Localization::getLang();
                     }
@@ -60,14 +72,14 @@ if ($_POST['action'] == 'check_test_results') {
                 }
                 break;
             case 'create_admission' :
-                if (isset($_POST['prescription'])) {
-                    $prescriptionStr = $_POST['prescription'];
+                if (isset($_GET['prescription'])) {
+                    $prescriptionStr = $_GET['prescription'];
                     $kit->storeTracking(KitInfo::ACTION_PROCESSED, $prescriptionStr);
                     $targetUrl = $kit->generateURLtoLC2() . "&prescription=" . urlencode($prescriptionStr);
                     header('Content-Type: application/text');
                     echo $targetUrl;
-                } elseif (isset($_POST['participant'])) {
-                    $participantRef = $_POST['participant'];
+                } elseif (isset($_GET['participant'])) {
+                    $participantRef = $_GET['participant'];
                     $kit->storeTracking(KitInfo::ACTION_PROCESSED, $participantRef);
                     $targetUrl = $kit->generateURLtoLC2();
                     header('Content-Type: application/text');
@@ -76,7 +88,7 @@ if ($_POST['action'] == 'check_test_results') {
                 break;
             case 'set_prescription' :
                 // PEDRO REMOVE
-                $prescription = new Prescription($_POST["prescription"], $_POST["participant"]);
+                $prescription = new Prescription($_GET["prescription"], $_GET["participant"]);
                 header('Content-Type: application/json');
                 echo $prescription->toJSON();
                 break;
@@ -84,45 +96,3 @@ if ($_POST['action'] == 'check_test_results') {
     }
 }
 
-/**
- * Generates an entry in the table KIT_TRACKING to know who is creating Admissions in Linkcare with a KIT_ID
- *
- * @param string $prescriptionString
- */
-function storeGatekeeperTracking($testResult, $qr) {
-    if (!$testResult) {
-        return;
-    }
-    $tz_object = new DateTimeZone('UTC');
-    $datetime = new DateTime();
-    $datetime->setTimezone($tz_object);
-    $today = $datetime->format('Y\-m\-d\ H:i:s');
-
-    if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        $ipAddress = $_SERVER['HTTP_X_FORWARDED_FOR'];
-    } else {
-        $ipAddress = $_SERVER['REMOTE_ADDR'];
-    }
-
-    $arrVariables[':id'] = getNextTrackingId();
-    $arrVariables[':instanceId'] = $GLOBALS['GATEKEEPER_INSTANCE'];
-    $arrVariables[':created'] = $today;
-    $arrVariables[':patientId'] = $testResult->patientId;
-    $arrVariables[':admissionId'] = $testResult->admissionId;
-    $arrVariables[':outcome'] = $testResult->output;
-    $arrVariables[':testResult'] = $testResult->result;
-    $arrVariables[':ipAddress'] = $ipAddress;
-    $arrVariables[':qr'] = $qr;
-    $sql = "INSERT INTO GATEKEEPER_TRACKING (ID_TRACKING, CREATED, ID_INSTANCE, ID_CASE, ID_ADMISSION, OUTCOME, TEST_RESULT, IP, QR) VALUES (:id, :created, :instanceId, :patientId, :admissionId, :outcome, :testResult, :ipAddress, :qr)";
-    Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
-}
-
-function getNextTrackingId() {
-    // if ($GLOBALS["BBDD"] == "ORACLE") {
-    $sql = "SELECT SEQ_GATEKEEPER.NEXTVAL AS NEXTV FROM DUAL";
-    $rst = Database::getInstance()->ExecuteQuery($sql);
-    $rst->Next();
-    return $rst->GetField("NEXTV");
-}
-
-?>

@@ -33,7 +33,7 @@ $GLOBALS["WS_LINK"] = "https://test-api.linkcareapp.com/ServerWSDL.php";
 // The QR code of prescriptions has a check digit at the begining of the string?
 $GLOBALS['QR_WITH_CHECK_DIGIT'] = true;
 
-$GLOBALS["PROGRAM_CODE"] = "SEROSCREENING";
+$GLOBALS["PROGRAM_CODE"] = "AG_NASOPHARYNGEAL";
 $GLOBALS["TASK_CODES"]["KIT_INFO"] = "KIT_INFO";
 $GLOBALS["TASK_CODES"]["PRESCRIPTION_INFO"] = "PRESCRIPTION_INFO";
 $GLOBALS["TASK_CODES"]["REGISTER_KIT"] = "REGISTER_KIT";
@@ -76,8 +76,8 @@ $GLOBALS["KIT_TRACKING"] = true;
 $GLOBALS["DEBUG_MODE"] = false;
 
 // Load particular configuration
-if (file_exists('conf/configuration.php')) {
-    include_once 'conf/configuration.php';
+if (file_exists(__DIR__ . '/../conf/configuration.php')) {
+    include_once __DIR__ . '/../conf/configuration.php';
 }
 
 date_default_timezone_set($GLOBALS["DEFAULT_TIMEZONE"]);

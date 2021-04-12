@@ -1,6 +1,6 @@
 <?php
-require_once 'default_conf.php';
-
+require_once 'lib/default_conf.php';
+error_log("Conn string: " . $GLOBALS["DBConnection_URI"]);
 /* Initialize the connection to the DB */
 $dbConnResult = Database::init($GLOBALS["DBConnection_URI"]);
 
@@ -171,9 +171,9 @@ if ($dbConnResult !== true) {
     
         //Function to write the results of the qr scan at a certain label
         function setResult(label, result) {
-            $.post(
+            $.get(
     			'actions.php',
-                {action: 'check_test_results', id: result},
+                {action: 'check_test_results', qr: result},
                 function(ret){
                     if(ret.result == 0){
                         // No test available

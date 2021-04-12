@@ -1,5 +1,5 @@
 <?php
-require_once 'default_conf.php';
+require_once 'lib/default_conf.php';
 
 /* Initialize the connection to the DB */
 $dbConnResult = Database::init($GLOBALS["DBConnection_URI"]);

@@ -1,7 +1,7 @@
 <?php
 
 // Link the config params
-require_once ("default_conf.php");
+require_once ("lib/default_conf.php");
 
 setSystemTimeZone();
 

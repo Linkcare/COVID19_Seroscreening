@@ -1,5 +1,5 @@
 <?php
-require_once 'default_conf.php';
+require_once 'lib/default_conf.php';
 
 if (isset($_SESSION["KIT"])) {
     /* @var KitInfo $kit */

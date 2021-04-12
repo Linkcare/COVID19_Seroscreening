@@ -2,7 +2,7 @@
 ini_set("soap.wsdl_cache_enabled", 0);
 
 // Link the config params
-require_once ("default_conf.php");
+require_once ("lib/default_conf.php");
 
 setSystemTimeZone();
 
