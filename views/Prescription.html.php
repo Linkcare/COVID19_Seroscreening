@@ -109,7 +109,7 @@
 	$("#btnSubmit").click(function (e) {		
 		if($("#participant_ref").prop('checked')){
 			var participant_ref_check = '';
-			$.post(
+			$.get(
 	        	'actions.php',
 	            {action: 'create_admission', participant: participant_ref_check},
 	            function(targetUrl){
@@ -118,7 +118,7 @@
 	        );
 		}else{
 			var prescriptionStr = $("#qr_code").val();	
-			$.post(
+			$.get(
 	        	'actions.php',
 	            {action: 'create_admission', prescription: prescriptionStr},
 	            function(targetUrl){
@@ -195,7 +195,7 @@ echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang())
 
     //Function to write the results of the qr scan at a certain label
     function setResult(label, submitButton, result) {
-        $.post(
+        $.get(
 			'actions.php',
             {action: 'set_prescription', prescription: result},
             function(jsonPrescription){

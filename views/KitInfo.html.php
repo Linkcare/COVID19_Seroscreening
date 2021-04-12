@@ -149,7 +149,7 @@ if ($kit->getStatus() == KitInfo::STATUS_NOT_USED) {
         </div>
         <script>
         	$("#btnProcessKit").click(function (e) {
-                $.post(
+                $.get(
                 	'actions.php',
                     {action: 'process_kit',lang: '<?php
 
