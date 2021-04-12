@@ -61,6 +61,27 @@ function checkTestResults($prescription) {
             $patientId = $rst->GetField('IIDPATPATIENT');
             $programId = $rst->GetField('ID_PROGRAMA');
         }
+    } elseif ($prescription->getId()) {
+        /* We know the PRESCRIPTION ID. Use it to obtain the ADMISSION, and then the PATIENT and PROGRAM */
+        $arrVariables = ['prescriptionId' => $prescription->getId()];
+        $sql = "SELECT DISTINCT a.IIDPATPATIENT, a.ID_PROGRAMA FROM TBPRGPATIENTPROGRAMME a, PRESTACIONES_INGRESO t, CUESTIONARIOS c ,RESPUESTAS r
+                WHERE
+                	a.DELETED IS NULL
+                	AND t.ID_INGRESO = a.IIDPATIENTPROGRAMME AND t.DELETED IS NULL
+                	AND c.TASK_ID  = t.ID_PRESTACION_INGRESO AND c.DELETED IS NULL
+                	AND r.ID_CUESTIONARIO = c.ID_CUESTIONARIO AND r.DATA_CODE = 'PRESCRIPTION_ID' AND r.RESPUESTA = :prescriptionId";
+
+        $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
+        $count = 0;
+        while ($rst->Next()) {
+            $patientId = $rst->GetField('IIDPATPATIENT');
+            $programId = $rst->GetField('ID_PROGRAMA');
+            $count++;
+        }
+        if ($count > 1) {
+            $results->error = 'More than one participant found with the same prescription ' . $prescription->getId();
+            return $results;
+        }
     } elseif ($prescription->getParticipantId()) {
         /*
          * We know the participant ID. Use it to obtain the PATIENT
@@ -102,32 +123,10 @@ function checkTestResults($prescription) {
         if ($rst->Next()) {
             $patientId = $rst->GetField('IIDPATPATIENT');
         }
-    } elseif ($prescription->getId()) {
-        /* We know the PRESCRIPTION ID. Use it to obtain the ADMISSION, and then the PATIENT and PROGRAM */
-        $arrVariables = ['prescriptionId' => $prescription->getId()];
-        $sql = "SELECT DISTINCT a.IIDPATPATIENT, a.ID_PROGRAMA FROM TBPRGPATIENTPROGRAMME a, PRESTACIONES_INGRESO t, CUESTIONARIOS c ,RESPUESTAS r
-                WHERE
-                	a.DELETED IS NULL
-                	AND t.ID_INGRESO = a.IIDPATIENTPROGRAMME AND t.DELETED IS NULL
-                	AND c.TASK_ID  = t.ID_PRESTACION_INGRESO AND c.DELETED IS NULL
-                	AND r.ID_CUESTIONARIO = c.ID_CUESTIONARIO AND r.DATA_CODE = 'PRESCRIPTION_ID' AND r.RESPUESTA = :prescriptionId";
-
-        $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
-        $count = 0;
-        while ($rst->Next()) {
-            $patientId = $rst->GetField('IIDPATPATIENT');
-            $programId = $rst->GetField('ID_PROGRAMA');
-            $count++;
-        }
-        if ($count > 1) {
-            $results->error = 'More than one participant found with the same prescription ' . $prescription->getId();
-            return $results;
-        }
     }
 
     if (!$programId || !$patientId) {
         // It is necessary to know PROGRAM and PATIENT
-        $results->error = 'PROGRAM or PATIENT not found';
         return $results;
     }
 
