@@ -83,23 +83,23 @@ class Prescription {
     }
 
     function getId() {
-        return $this->prescriptionData->id;
+        return trim($this->prescriptionData->id);
     }
 
     function getProgram() {
-        return $this->prescriptionData->program;
+        return trim($this->prescriptionData->program);
     }
 
     function getTeam() {
-        return $this->prescriptionData->team;
+        return trim($this->prescriptionData->team);
     }
 
     function getExpirationDate() {
-        $this->prescriptionData->expiration;
+        return trim($this->prescriptionData->expiration);
     }
 
     function getParticipantId() {
-        return $this->prescriptionData->participant;
+        return trim($this->prescriptionData->participant);
     }
 
     function getRounds() {

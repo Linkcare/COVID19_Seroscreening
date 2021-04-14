@@ -52,6 +52,7 @@ function checkTestResults($prescription) {
 
     $patientId = null;
     $programId = null;
+    $found = false;
 
     if ($prescription->getAdmissionId()) {
         // We know the ADMISSION. Use it to obtain the PATIENT and the PROGRAM
@@ -61,7 +62,78 @@ function checkTestResults($prescription) {
             $patientId = $rst->GetField('IIDPATPATIENT');
             $programId = $rst->GetField('ID_PROGRAMA');
         }
-    } elseif ($prescription->getId()) {
+        $found = true;
+    }
+
+    if (!$found && $prescription->getParticipantId()) {
+        /*
+         * We know the participant ID. Use it to obtain the PATIENT
+         * It is necessary to know also the PROGRAM and TEAM because PARTICIPANT_REF is a SUBSCRIPTION IDENTIFIER
+         */
+        $teamId = null;
+        if ($prescription->getProgram()) {
+            if (!is_numeric($prescription->getProgram())) {
+                // We have a PROGRAM CODE. Find the PROGRAM ID
+                $sql = 'SELECT ID_PROGRAMA FROM PROGRAMAS p WHERE PROG_CODE = :id';
+                $rst = Database::getInstance()->ExecuteBindQuery($sql, $prescription->getProgram());
+                if ($rst->Next()) {
+                    $programId = $rst->GetField('ID_PROGRAMA');
+                } else {
+                    $results->error = 'PROGRAM not found ' . $prescription->getProgram();
+                    return $results;
+                }
+            } else {
+                $programId = $prescription->getProgram();
+            }
+        }
+
+        if (!$programId) {
+            $results->error = 'PROGRAM not found ' . $prescription->getProgram();
+            return $results;
+        }
+
+        // Find the TEAM of the SUBSCRIPTION. We admit the possibility of no having a TEAM if there exists only one PATIENT in the PROGRAM with the
+        // specified PARTICIPANT_REF
+        if ($prescription->getTeam()) {
+            if (!is_numeric($prescription->getTeam())) {
+                // We have a PROGRAM CODE. Find the TEAM ID
+                $sql = 'SELECT IIDGNRCENTRE FROM TBGNRCENTRE WHERE TEAM_CODE = :id';
+                $rst = Database::getInstance()->ExecuteBindQuery($sql, $prescription->getTeam());
+                if ($rst->Next()) {
+                    $teamId = $rst->GetField('IIDGNRCENTRE');
+                } else {
+                    $results->error = 'TEAM not found ' . $prescription->getTeam();
+                    return $results;
+                }
+            } else {
+                $teamId = $prescription->getTeam();
+            }
+        }
+
+        $arrVariables = [':programId' => $programId, ':participantId' => $prescription->getParticipantId()];
+        if ($teamId) {
+            $arrVariables[':teamId'] = $teamId;
+            $teamCondition = 'AND TEAM_ID = :teamId';
+        }
+        $sql = "SELECT p.IIDPATPATIENT, i.TEAM_ID, i.PROGRAM_ID FROM IDENTIFIERS i, TBPATPATIENT p
+            WHERE i.CODE ='PARTICIPANT_REF' AND VALUE = :participantId
+                AND p.IIDGNRPERSON = i.PERSON_ID AND PROGRAM_ID = :programId $teamCondition";
+        $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
+        $patientsFound = [];
+        while ($rst->Next()) {
+            $patientsFound[] = $rst->GetField('IIDPATPATIENT');
+        }
+
+        if (count($patientsFound) == 1) {
+            $patientId = reset($patientsFound);
+            $found = true;
+        } else {
+            $results->error = 'Not enough information to find participant with ref: ' . $prescription->getParticipantId();
+            return $results;
+        }
+    }
+
+    if (!$found && $prescription->getId()) {
         /* We know the PRESCRIPTION ID. Use it to obtain the ADMISSION, and then the PATIENT and PROGRAM */
         $arrVariables = ['prescriptionId' => $prescription->getId()];
         $sql = "SELECT DISTINCT a.IIDPATPATIENT, a.ID_PROGRAMA FROM TBPRGPATIENTPROGRAMME a, PRESTACIONES_INGRESO t, CUESTIONARIOS c ,RESPUESTAS r
@@ -81,47 +153,6 @@ function checkTestResults($prescription) {
         if ($count > 1) {
             $results->error = 'More than one participant found with the same prescription ' . $prescription->getId();
             return $results;
-        }
-    } elseif ($prescription->getParticipantId()) {
-        /*
-         * We know the participant ID. Use it to obtain the PATIENT
-         * It is necessary to know also the PROGRAM and TEAM because PARTICIPANT_REF is a SUBSCRIPTION IDENTIFIER
-         */
-        $teamId = null;
-        if (!is_numeric($prescription->getProgram())) {
-            // We have a PROGRAM CODE. Find the PROGRAM ID
-            $sql = 'SELECT ID_PROGRAMA FROM PROGRAMAS p WHERE PROG_CODE = :id';
-            $rst = Database::getInstance()->ExecuteBindQuery($sql, $prescription->getProgram());
-            if ($rst->Next()) {
-                $programId = $rst->GetField('ID_PROGRAMA');
-            } else {
-                $results->error = 'PROGRAM not found';
-                return $results;
-            }
-        } else {
-            $programId = $prescription->getProgram();
-        }
-        if (!is_numeric($prescription->getTeam())) {
-            // We have a PROGRAM CODE. Find the TEAM ID
-            $sql = 'SELECT IIDGNRCENTRE FROM TBGNRCENTRE WHERE TEAM_CODE = :id';
-            $rst = Database::getInstance()->ExecuteBindQuery($sql, $prescription->getTeam());
-            if ($rst->Next()) {
-                $teamId = $rst->GetField('IIDGNRCENTRE');
-            } else {
-                $results->error = 'TEAM not found';
-                return $results;
-            }
-        } else {
-            $teamId = $prescription->getTeam();
-        }
-
-        $arrVariables = [':programId' => $programId, ':teamId' => $teamId, ':participantId' => $prescription->getParticipantId()];
-        $sql = "SELECT p.IIDPATPATIENT FROM IDENTIFIERS i, TBPATPATIENT p
-            WHERE i.CODE ='PARTICIPANT_REF' AND VALUE = :participantId
-                AND p.IIDGNRPERSON = i.PERSON_ID AND PROGRAM_ID = :programId AND TEAM_ID = :teamId";
-        $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
-        if ($rst->Next()) {
-            $patientId = $rst->GetField('IIDPATPATIENT');
         }
     }
 
@@ -143,7 +174,7 @@ function checkTestResults($prescription) {
         	    AND adm.IIDPRGPATIENTPROGRAMMESTATE IN (1,4,5)
         	    AND pi.ID_INGRESO = adm.IIDPATIENTPROGRAMME
         	    AND pi.DELETED IS NULL
-        	    AND pi.TASK_CODE = 'KIT_RESULTS'            
+        	    AND pi.TASK_CODE IN ('KIT_RESULTS', 'KIT_RESULTS_INTRODUCTION')             
             ORDER BY pi.FECHA_HORA_FIN DESC NULLS FIRST";
 
     $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);

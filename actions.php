@@ -8,6 +8,7 @@ if ($_GET['action'] == 'check_test_results') {
         $prescription = new Prescription($_GET['qr']);
     } else {
         $prescription = new Prescription(null, $_GET['participant_id']);
+        $prescription->setId($_GET['prescription_id']);
         $prescription->setProgram($_GET['program']);
         $prescription->setTeam($_GET['team']);
     }
