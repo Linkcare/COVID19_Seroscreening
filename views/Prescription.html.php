@@ -106,21 +106,22 @@
 	$('#div-qr-video').hide();
 
 	/* The submit button will be started dinamically and the prescription added from the input */
-	$("#btnSubmit").click(function (e) {		
-		if($("#participant_ref").prop('checked')){
-			var participant_ref_check = '';
+	$("#btnSubmit").click(function (e) {
+		/* If a prescription was scanned from a QR, it has priority over the check to enter manually */
+		if($('#qr_code').val()){			
+			var prescriptionStr = $("#qr_code").val();			
 			$.get(
 	        	'actions.php',
-	            {action: 'create_admission', participant: participant_ref_check},
+	            {action: 'create_admission', prescription: prescriptionStr},
 	            function(targetUrl){
 	                window.location.href = targetUrl;
 	            }
 	        );
-		}else{
-			var prescriptionStr = $("#qr_code").val();	
+		} else if($("#participant_ref").prop('checked')){
+			var participant_ref_check = '';
 			$.get(
 	        	'actions.php',
-	            {action: 'create_admission', prescription: prescriptionStr},
+	            {action: 'create_admission', participant: participant_ref_check},
 	            function(targetUrl){
 	                window.location.href = targetUrl;
 	            }
@@ -155,7 +156,7 @@ echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang())
 		}
 	});
 
-
+	
 
 	/* Disable and enable of the submit button according to the text input, if it's empty disable it */
 	$(document).ready(function() {
@@ -199,6 +200,9 @@ echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang())
 			'actions.php',
             {action: 'set_prescription', prescription: result},
             function(jsonPrescription){
+                //Uncheck the checkbox to enter manually
+                $( "#participant_ref" ).prop( "checked", false );
+                
                 if(jsonPrescription.success == 0 || jsonPrescription.success == undefined) {
                     $("#prescriptionInfo").hide();
                     $("#personalPrescriptionInfo").hide();
