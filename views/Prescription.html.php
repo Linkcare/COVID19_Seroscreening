@@ -194,6 +194,22 @@ echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang())
         $('#div-qr-video').hide();
     }
 
+    /* Function to fill the Prescription's fields or empty them, showing or hiding it, parameters:
+    	- element: element that contains the prescription field value
+    	- elementBlock: block that contains the element value and element name
+    	- content: value of the prescription field obtained from a get
+    */
+    function prescriptionFieldContents(element, elementBlock, content){
+        // If the type is not string, don't check if it has content inside
+        if(content != null && ((content != '' && typeof content == 'string') || (typeof content != 'string') )) {
+        	element.html(content);
+        	elementBlock.show();
+        }else{
+        	element.html('');
+        	elementBlock.hide();
+        }
+    }
+
     //Function to write the results of the qr scan at a certain label
     function setResult(label, submitButton, result) {
         $.get(
@@ -214,43 +230,17 @@ echo ("./index.php?id=" . $kit->getId() . "&culture=" . Localization::getLang())
                     ?>';
                 } else{
                     // Fill the prescription fields
-                    //Prescription QR                        
-                    if(jsonPrescription.id != null && jsonPrescription.id != '') {
-                        $("#prescriptionId").html(jsonPrescription.id);
-                        $("#prescriptionIdBlock").show();
-                    }
-                    if(jsonPrescription.program != null && jsonPrescription.program != '') {
-                        $("#prescriptionProgram").html(jsonPrescription.program);
-                        $("#prescriptionProgramBlock").show();
-                    }
-                    if(jsonPrescription.team != null && jsonPrescription.team != '') {
-                        $("#prescriptionTeam").html(jsonPrescription.team);
-                        $("#prescriptionTeamBlock").show();
-                    }
-                    if(jsonPrescription.name != null && jsonPrescription.name != '') {
-                        $("#prescriptionName").html(jsonPrescription.name);
-                        $("#prescriptionNameBlock").show();
-                    }
-                    if(jsonPrescription.email != null && jsonPrescription.email != '') {
-                        $("#prescriptionEmail").html(jsonPrescription.email);
-                        $("#prescriptionEmailBlock").show();
-                    }
-                    if(jsonPrescription.phone != null && jsonPrescription.phone != '') {
-                        $("#prescriptionPhone").html(jsonPrescription.phone);
-                        $("#prescriptionPhoneBlock").show();
-                    }
-                    if(jsonPrescription.participantId != null && jsonPrescription.participantId != '') {
-                        $("#prescriptionParticipantId").html(jsonPrescription.participantId);
-                        $("#prescriptionParticipantIdBlock").show();
-                    }
-                    if(jsonPrescription.expirationDate != null && jsonPrescription.expirationDate != '') {
-                       $("#prescriptionExpires").html(jsonPrescription.expirationDate);
-                       $("#prescriptionExpiresBlock").show();
-                    }
-                    if(jsonPrescription.rounds != null) {
-                       $("#prescriptionRounds").html(jsonPrescription.rounds);
-                       $("#prescriptionRoundsBlock").show();
-                    }
+                    //Prescription QR
+                    prescriptionFieldContents($("#prescriptionId"),$("#prescriptionIdBlock"),jsonPrescription.id);         
+                    prescriptionFieldContents($("#prescriptionProgram"),$("#prescriptionProgramBlock"),jsonPrescription.program);      
+                    prescriptionFieldContents($("#prescriptionTeam"),$("#prescriptionTeamBlock"),jsonPrescription.team);
+                    prescriptionFieldContents($("#prescriptionName"),$("#prescriptionNameBlock"),jsonPrescription.name);
+                    prescriptionFieldContents($("#prescriptionEmail"),$("#prescriptionEmailBlock"),jsonPrescription.email);
+                    prescriptionFieldContents($("#prescriptionPhone"),$("#prescriptionPhoneBlock"),jsonPrescription.phone);
+                    prescriptionFieldContents($("#prescriptionParticipantId"),$("#prescriptionParticipantIdBlock"),jsonPrescription.participantId);
+                    prescriptionFieldContents($("#prescriptionExpires"),$("#prescriptionExpiresBlock"),jsonPrescription.expirationDate);
+                    prescriptionFieldContents($("#prescriptionRounds"),$("#prescriptionRoundsBlock"),jsonPrescription.rounds);
+                   	// Show the Prescription
                     $("#prescriptionInfo").show();                        
 
                     //Now that a prescription has been scanned, hide the rest of the page
