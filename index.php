@@ -67,6 +67,13 @@ if ($dbConnResult !== true) {
         }
     } else {
         /* The kit doesn't exist or there was no id specified at the URL */
+        $kitId = $_GET['id'];
+        if (trim($kitId)) {
+            $kit = new KitInfo();
+            $kit->setId($kitId);
+            $kit->setStatus(KitInfo::STATUS_INVALID);
+            $kit->storeTracking(KitInfo::ACTION_SCANNED, '');
+        }
         $err = new ErrorInfo(ErrorInfo::INVALID_KIT);
         openErrorInfoView($err);
     }

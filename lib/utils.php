@@ -177,9 +177,6 @@ function currentDate($timezone = null) {
         // Some timezones are not an integer number of hours
         $timezone = intval($timezone * 60);
         $d = strtotime($dateUTC);
-        if (!$d) {
-            $d = strtotime(todayUTC());
-        }
         $dateInTimezone = date('Y-m-d H:i:s', strtotime("$timezone minutes", $d));
     } else {
         try {

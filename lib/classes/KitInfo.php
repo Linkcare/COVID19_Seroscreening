@@ -1,6 +1,7 @@
 <?php
 
 class KitInfo {
+    const STATUS_INVALID = "INVALID";
     const STATUS_DISCARDED = "DISCARDED";
     const STATUS_NOT_USED = "NOT_USED";
     const STATUS_ASSIGNED = "ASSIGNED";
@@ -347,5 +348,26 @@ class KitInfo {
         $rst = Database::getInstance()->ExecuteQuery($sql);
         $rst->Next();
         return $rst->GetField("NEXTV");
+    }
+
+    static public function insertKit($kitId, $batch) {
+        $arrVariables[':kitId'] = $kitId;
+        $sql = "SELECT KIT_ID FROM KIT_INFO WHERE KIT_ID=:kitId";
+        $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
+        if ($rst->Next()) {
+            // Kit already exists
+            return;
+        }
+
+        $arrVariables[':mPlace'] = 'Nantong - RP China';
+        $arrVariables[':mDate'] = currentDate();
+        $expiration = date('Y-m-d H:i:s', strtotime("2 years", strtotime(currentDate())));
+
+        $arrVariables[':eDate'] = $expiration;
+        $arrVariables[':batchNumber'] = $batch;
+
+        $sql = "INSERT INTO KIT_INFO (KIT_ID, MANUFACTURE_PLACE, MANUFACTURE_DATE, EXPIRATION, BATCH_NUMBER, STATUS, ID_INSTANCE, PROGRAM_CODE) VALUES
+                (:kitId, :mPlace, :mDate, :eDate, :batchNumber, NULL, 'COVID19', 'COVID19_AG')";
+        Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
     }
 }
