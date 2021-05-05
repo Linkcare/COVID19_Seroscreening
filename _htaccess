@@ -4,7 +4,7 @@ Allow from all
   Deny from all
 </Files>
 
-<IfModule mod_rewrite.c>x 
+<IfModule mod_rewrite.c>
 RewriteEngine on
 RewriteRule ^gatekeeper$ gatekeeper.php
 RewriteRule ^digital_gatekeeper$ actions.php?action=check_test_results&program=COVID19_AG [QSA]

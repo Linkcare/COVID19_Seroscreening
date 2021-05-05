@@ -117,10 +117,10 @@ function checkTestResults($prescription) {
         }
         $sql = "SELECT p.IIDPATPATIENT, i.TEAM_ID, i.PROGRAM_ID FROM IDENTIFIERS i, TBPATPATIENT p
             WHERE i.CODE ='PARTICIPANT_REF' AND VALUE = :participantId
-                AND p.IIDGNRPERSON = i.PERSON_ID AND PROGRAM_ID = :programId $teamCondition";
+                AND p.IIDGNRPERSON = i.PERSON_ID AND PROGRAM_ID = :programId $teamCondition ORDER BY IIDPATPATIENT DESC";
         $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
         $patientsFound = [];
-        while ($rst->Next()) {
+        if ($rst->Next()) {
             $patientsFound[] = $rst->GetField('IIDPATPATIENT');
         }
 
