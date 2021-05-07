@@ -30,6 +30,9 @@ $GLOBALS["WS_LINK"] = "https://test-api.linkcareapp.com/ServerWSDL.php";
  */
 // $GLOBALS["KIT_INFO_MGR"] = "https://test-api.linkcareapp.com/";
 
+// Name of the IDENTIFIER used to identify the participants
+$GLOBALS['PARTICIPANT_IDENTIFIER'] = 'PARTICIPANT_REF';
+
 // The QR code of prescriptions has a check digit at the begining of the string?
 $GLOBALS['QR_WITH_CHECK_DIGIT'] = true;
 

@@ -98,8 +98,14 @@ class Prescription {
         return trim($this->prescriptionData->expiration);
     }
 
-    function getParticipantId() {
-        return trim($this->prescriptionData->participant);
+    // The PARTICIPANT_REF is an IDENTIFIER with format xxxxx@team_code
+    function getParticipantId($teamCode) {
+        $participantId = trim($this->prescriptionData->participant);
+        if ($participantId && $teamCode && strpos($participantId, '@') === false) {
+            // If the TEAM CODE is not present in the participant ID, then add the $teamCode provided
+            $participantId = $participantId . '@' . $teamCode;
+        }
+        return $participantId;
     }
 
     function getRounds() {

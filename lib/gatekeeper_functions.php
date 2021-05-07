@@ -68,9 +68,7 @@ function checkTestResults($prescription) {
     if (!$found && $prescription->getParticipantId()) {
         /*
          * We know the participant ID. Use it to obtain the PATIENT
-         * It is necessary to know also the PROGRAM and TEAM because PARTICIPANT_REF is a SUBSCRIPTION IDENTIFIER
          */
-        $teamId = null;
         if ($prescription->getProgram()) {
             if (!is_numeric($prescription->getProgram())) {
                 // We have a PROGRAM CODE. Find the PROGRAM ID
@@ -92,35 +90,14 @@ function checkTestResults($prescription) {
             return $results;
         }
 
-        // Find the TEAM of the SUBSCRIPTION. We admit the possibility of no having a TEAM if there exists only one PATIENT in the PROGRAM with the
-        // specified PARTICIPANT_REF
-        if ($prescription->getTeam()) {
-            if (!is_numeric($prescription->getTeam())) {
-                // We have a PROGRAM CODE. Find the TEAM ID
-                $sql = 'SELECT IIDGNRCENTRE FROM TBGNRCENTRE WHERE TEAM_CODE = :id';
-                $rst = Database::getInstance()->ExecuteBindQuery($sql, $prescription->getTeam());
-                if ($rst->Next()) {
-                    $teamId = $rst->GetField('IIDGNRCENTRE');
-                } else {
-                    $results->error = 'TEAM not found ' . $prescription->getTeam();
-                    return $results;
-                }
-            } else {
-                $teamId = $prescription->getTeam();
-            }
-        }
-
         $arrVariables = [':programId' => $programId, ':participantId' => $prescription->getParticipantId()];
-        if ($teamId) {
-            $arrVariables[':teamId'] = $teamId;
-            $teamCondition = 'AND TEAM_ID = :teamId';
-        }
         $sql = "SELECT p.IIDPATPATIENT, i.TEAM_ID, i.PROGRAM_ID FROM IDENTIFIERS i, TBPATPATIENT p
-            WHERE i.CODE ='PARTICIPANT_REF' AND VALUE = :participantId
-                AND p.IIDGNRPERSON = i.PERSON_ID AND PROGRAM_ID = :programId $teamCondition ORDER BY IIDPATPATIENT DESC";
+            WHERE i.CODE ='" . $GLOBALS['PARTICIPANT_IDENTIFIER'] .
+                "' AND VALUE = :participantId
+                AND p.IIDGNRPERSON = i.PERSON_ID AND PROGRAM_ID = :programId ORDER BY IIDPATPATIENT DESC";
         $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
         $patientsFound = [];
-        if ($rst->Next()) {
+        while ($rst->Next()) {
             $patientsFound[] = $rst->GetField('IIDPATPATIENT');
         }
 

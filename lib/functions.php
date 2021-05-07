@@ -1,5 +1,4 @@
 <?php
-const PATIENT_IDENTIFIER = 'PARTICIPANT_REF';
 
 /**
  *
@@ -208,7 +207,7 @@ function processKit($kitInfo, $subscriptionId = null) {
         if (!$subscription) {
             throw new KitException(ErrorInfo::SUBSCRIPTION_NOT_FOUND);
         }
-        $lc2Action = initializeAdmission($kitInfo, $prescription, $existingCaseId, $subscription->getId(), $foundAdmission);
+        $lc2Action = initializeAdmission($kitInfo, $prescription, $existingCaseId, $subscription, $foundAdmission);
     } else {
         // The ADMISSION for the KIT exists and it has already been initialized
         $lc2Action = updateAdmission($foundAdmission, $kitInfo);
@@ -401,13 +400,13 @@ function loadAdmissionFromPrescription($subscription, $kitInfo, $prescription, $
     $finishedAdmissions = 0;
     $existingCaseId = null;
 
-    if ($prescription->getParticipantId()) {
+    if ($prescription->getParticipantId($subscription->getTeam()->getCode())) {
         $searchCondition = new StdClass();
         $searchCondition->identifier = new StdClass();
-        $searchCondition->identifier->code = PATIENT_IDENTIFIER;
-        $searchCondition->identifier->value = $prescription->getParticipantId();
-        $searchCondition->identifier->program = $subscription->getProgram()->getId();
-        $searchCondition->identifier->team = $subscription->getTeam()->getId();
+        $searchCondition->identifier->code = $GLOBALS['PARTICIPANT_IDENTIFIER'];
+        $searchCondition->identifier->value = $prescription->getParticipantId($subscription->getTeam()->getCode());
+        // $searchCondition->identifier->program = $subscription->getProgram()->getId();
+        // $searchCondition->identifier->team = $subscription->getTeam()->getId();
         if ($api->errorCode()) {
             throw new APIException($api->errorCode(), $api->errorMessage());
         }
@@ -620,14 +619,16 @@ function findSubscription($prescription, $defaultProgramCode = null) {
  *
  * @param KitInfo $kitInfo
  * @param Prescription $prescription
- * @param int $subscriptionId
+ * @param APISubscription $subscription
  * @param APIAdmission $admission (default = null) If not NULL, the function will initialize an existing ADMISSION
  * @return LC2Action
  */
-function initializeAdmission($kitInfo, $prescription, $caseId, $subscriptionId, $admission = null) {
+function initializeAdmission($kitInfo, $prescription, $caseId, $subscription, $admission = null) {
     $lc2Action = new LC2Action();
     $api = LinkcareSoapAPI::getInstance();
     $isNewCase = false;
+
+    $participantId = $prescription ? $prescription->getParticipantId($subscription->getTeam()->getCode()) : null;
 
     if (!$caseId) {
         $isNewCase = true;
@@ -660,13 +661,13 @@ function initializeAdmission($kitInfo, $prescription, $caseId, $subscriptionId, 
             $contactInfo->addPhone($phone);
         }
 
-        if ($prescription && $prescription->getParticipantId()) {
-            $studyRef = new APIIdentifier(PATIENT_IDENTIFIER, $prescription->getParticipantId());
+        if ($participantId) {
+            $studyRef = new APIIdentifier($GLOBALS['PARTICIPANT_IDENTIFIER'], $participantId);
             $contactInfo->addIdentifier($studyRef);
         }
 
         // Create a new CASE with incomplete data (only the KIT_ID)
-        $caseId = $api->case_insert($contactInfo, $subscriptionId, true);
+        $caseId = $api->case_insert($contactInfo, $subscription->getId(), true);
 
         if ($api->errorCode()) {
             $lc2Action->setActionType(LC2Action::ACTION_ERROR_MSG);
@@ -681,7 +682,8 @@ function initializeAdmission($kitInfo, $prescription, $caseId, $subscriptionId, 
     $admissionCreated = false;
     if (!$admission) {
         // Create an ADMISSION
-        $admission = $api->admission_create($caseId, $subscriptionId, null, null, true, $prescription ? $prescription->getPrescriptionData() : null);
+        $admission = $api->admission_create($caseId, $subscription->getId(), null, null, true,
+                $prescription ? $prescription->getPrescriptionData() : null);
 
         if (!$admission || $api->errorCode()) {
             // An unexpected error happened while creating the ADMISSION: Delete the CASE
