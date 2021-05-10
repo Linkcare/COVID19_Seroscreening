@@ -99,7 +99,7 @@ class Prescription {
     }
 
     // The PARTICIPANT_REF is an IDENTIFIER with format xxxxx@team_code
-    function getParticipantId($teamCode) {
+    function getParticipantId($teamCode = null) {
         $participantId = trim($this->prescriptionData->participant);
         if ($participantId && $teamCode && strpos($participantId, '@') === false) {
             // If the TEAM CODE is not present in the participant ID, then add the $teamCode provided

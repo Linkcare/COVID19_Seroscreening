@@ -19,7 +19,7 @@ const DIAGNOSTIC_EXPIRED = 4;
  * <li>error: error message (if any)
  * </ul>
  *
- * @param string $participantQR
+ * @param Prescription $prescription
  * @return StdClass
  */
 function checkTestResults($prescription) {
@@ -32,7 +32,7 @@ function checkTestResults($prescription) {
     $results->output = null;
     $results->expiration = null;
 
-    if (!$prescription || !$prescription->isValid()) {
+    if (!$prescription) {
         $results->error = 'Invalid QR';
         return $results;
     }
@@ -90,11 +90,11 @@ function checkTestResults($prescription) {
             return $results;
         }
 
-        $arrVariables = [':programId' => $programId, ':participantId' => $prescription->getParticipantId()];
+        $arrVariables = [':participantId' => $prescription->getParticipantId()];
         $sql = "SELECT p.IIDPATPATIENT, i.TEAM_ID, i.PROGRAM_ID FROM IDENTIFIERS i, TBPATPATIENT p
             WHERE i.CODE ='" . $GLOBALS['PARTICIPANT_IDENTIFIER'] .
                 "' AND VALUE = :participantId
-                AND p.IIDGNRPERSON = i.PERSON_ID AND PROGRAM_ID = :programId ORDER BY IIDPATPATIENT DESC";
+                AND p.IIDGNRPERSON = i.PERSON_ID ORDER BY IIDPATPATIENT DESC";
         $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
         $patientsFound = [];
         while ($rst->Next()) {
