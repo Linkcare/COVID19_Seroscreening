@@ -8,8 +8,14 @@ class APIForm {
     private $parentId;
     private $date;
     private $status;
-    /* @var APIQuestion[] $questions */
-    private $questions = [];
+    /** @var APIQuestion[] $questions */
+    private $questions = null;
+    /** @var LinkcareSoapAPI $api */
+    private $api;
+
+    public function __construct() {
+        $this->api = LinkcareSoapAPI::getInstance();
+    }
 
     /**
      *
@@ -117,7 +123,7 @@ class APIForm {
      * @return APIQuestion[]
      */
     public function getQuestions() {
-        return $this->questions;
+        return $this->questions ?? [];
     }
 
     /*
@@ -140,8 +146,12 @@ class APIForm {
      * @return APIQuestion
      */
     public function findQuestion($questionId) {
+        if ($this->questions === null) {
+            $f = $this->api->form_get_summary($this->id);
+            $this->questions = $f->getQuestions();
+        }
         foreach ($this->questions as $q) {
-            if ($q->getQuestionTemplateId() == $questionId) {
+            if ($q->getQuestionTemplateId() == $questionId || $q->getItemCode() == $questionId) {
                 return $q;
             }
         }

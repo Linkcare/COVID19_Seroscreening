@@ -4,7 +4,7 @@
  *
  * @param string $token
  * @param KitInfo $kitInfo
- * @return string
+ * @return LC2Action
  */
 function service_dispatch_kit($token = null, $kitInfo, $subscriptionId) {
     $timezone = "0";
@@ -22,7 +22,7 @@ function service_dispatch_kit($token = null, $kitInfo, $subscriptionId) {
             $lc2Action = new LC2Action(LC2Action::ACTION_ERROR_MSG);
             $lc2Action->setErrorMessage("Cannot initialize DB. Contact a system administrator to solve the problem");
             service_log("ERROR: Cannot initialize DB: " . $e->getMessage());
-            return $lc2Action->toString();
+            return $lc2Action;
         }
     }
 
@@ -32,7 +32,9 @@ function service_dispatch_kit($token = null, $kitInfo, $subscriptionId) {
         $lc2Action->setErrorMessage($error->getErrorMessage());
     } else {
         try {
-            LinkcareSoapAPI::init($GLOBALS["WS_LINK"], $timezone, $token);
+
+            LinkcareSoapAPI::setEndpoint($GLOBALS["WS_LINK"]);
+            LinkcareSoapAPI::session_join($token, $timezone);
             $session = LinkcareSoapAPI::getInstance()->getSession();
             Localization::init($session->getLanguage());
             // Find the SUBSCRIPTION of the PROGRAM "Seroscreening" of the active user
@@ -48,7 +50,7 @@ function service_dispatch_kit($token = null, $kitInfo, $subscriptionId) {
         }
     }
 
-    return $lc2Action->toString();
+    return $lc2Action;
 }
 
 /**
@@ -77,9 +79,6 @@ function processKit($kitInfo, $subscriptionId = null) {
 
     // Find out if there exists a patient assigned to the Kit ID
     $casesByDevice = $api->case_search('SEROSCREENING:' . $kitInfo->getId());
-    if ($api->errorCode()) {
-        throw new APIException($api->errorCode(), $api->errorMessage());
-    }
     if (!empty($casesByDevice)) {
         /* @var APICase $caseByDevice */
         $caseByDevice = $casesByDevice[0];
@@ -118,10 +117,7 @@ function processKit($kitInfo, $subscriptionId = null) {
             // We are in professional mode
             if ($subscriptionId) {
                 // An specific SUBSCRIPTION ID has been provided
-                $subscription = $api::getInstance()->subscription_get(null, null, $subscriptionId);
-                if ($api->errorCode()) {
-                    throw new APIException($api->errorCode(), $api->errorMessage());
-                }
+                $subscription = $api->subscription_get(null, null, $subscriptionId);
             } else {
                 $subscriptions = findSubscription($prescription, $kitInfo->getProgramCode());
                 /* @var APISubscription $subscription */
@@ -171,9 +167,6 @@ function processKit($kitInfo, $subscriptionId = null) {
         $searchCondition->data_code->value = $kitInfo->getId();
         $kitAdmissions = $api->case_admission_list($caseByDevice->getId(), true, $subscription ? $subscription->getId() : null,
                 json_encode($searchCondition));
-        if ($api->errorCode()) {
-            throw new APIException($api->errorCode(), $api->errorMessage());
-        }
 
         if (count($kitAdmissions) == 0) {
             // It is not possible to create a new ADMISSION without the prescription information
@@ -236,9 +229,6 @@ function loadExistingAdmission($admissionId, $kitInfo, $caseByDevice) {
     $api = LinkcareSoapAPI::getInstance();
 
     $admission = $api->admission_get($admissionId);
-    if ($api->errorCode()) {
-        throw new APIException($api->errorCode(), $api->errorMessage());
-    }
     if (!$admission) {
         throw new KitException(ErrorInfo::ADMISSION_NOT_FOUND);
     }
@@ -254,9 +244,6 @@ function loadExistingAdmission($admissionId, $kitInfo, $caseByDevice) {
         $searchCondition->data_code->name = 'KIT_ID';
         $searchCondition->data_code->value = $kitInfo->getId();
         $kitAdmissions = $api->case_admission_list($caseByDevice->getId(), true, $admission->getSubscription()->getId(), json_encode($searchCondition));
-        if ($api->errorCode()) {
-            throw new APIException($api->errorCode(), $api->errorMessage());
-        }
 
         $admissionForKit = count($kitAdmissions) > 0 ? $kitAdmissions[0] : null; // There can only exist one Admission per device
         if ($admissionForKit && $admissionForKit->getId() != $admission->getId()) {
@@ -302,32 +289,35 @@ function invalidateKit($admission, $errorCode = null) {
     }
 
     // If the TASK "HEALTH_FORFAIT" exists and is open, then reset the value of the KIT ID and redirect to the TASK
-    $tasks = $api->case_get_task_list($admission->getCaseId(), null, null, '{"admission" : "' . $admission->getId() . '"}');
-    $hfTask = null;
+
+    $filter = new TaskFilter();
+    $filter->setObjectType('TASKS');
+    $filter->setStatusIds('OPEN');
     $taskCodes = [$GLOBALS["TASK_CODES"]["HEALTH_FORFAIT"], $GLOBALS["TASK_CODES"]["SCAN_KIT_LINK"]];
+    $filter->setTaskCodes(implode(',', $taskCodes));
+    $tasks = $api->admission_get_task_list($admission->getId(), null, null, $filter);
+    $hfTask = null;
     foreach ($tasks as $t) {
-        if (in_array($t->getTaskCode(), $taskCodes) && in_array($t->getStatus(), ['OPEN', 'ASSIGNED/NOT DONE'])) {
-            // There exists an open REGISTER KIT TASK
-            $hfTask = $t;
-            break;
-        }
+        // There exists an open REGISTER KIT TASK
+        $hfTask = $t;
+        break;
     }
 
     if ($hfTask) {
         $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_TASK);
         $lc2Action->setTaskId($hfTask->getId());
         $forms = $api->task_activity_list($hfTask->getId());
-        if ($api->errorCode()) {
-            // An unexpected error happened while obtaining the list of activities
-            throw new APIException($api->errorCode(), $api->errorMessage());
-        }
 
         $formCodes = [$GLOBALS["FORM_CODES"]["HEALTH_FORFAIT"], $GLOBALS["FORM_CODES"]["SCAN_KIT_LINK"]];
         foreach ($forms as $form) {
             if (in_array($form->getFormCode(), $formCodes) && $form->getStatus() == "OPEN") {
                 // The HEALTH FORFAIT FORM is open: reset the "KIT ID" ITEM
                 $qId = $form->getFormCode() == $GLOBALS["FORM_CODES"]["HEALTH_FORFAIT"] ? $GLOBALS["HEALTH_FORFAIT"]["KIT_ID"] : $GLOBALS["SCAN_KIT_LINK_Q_ID"]["KIT_ID"];
-                $api->form_set_answer($form->getId(), $qId, '');
+                try {
+                    $api->form_set_answer($form->getId(), $qId, '');
+                } catch (Exception $e) {
+                    // Ignore errors
+                }
                 break;
             }
         }
@@ -350,7 +340,14 @@ function redirectToFirstOpenTask($admission) {
     $lc2Action->setCaseId($admission->getCaseId());
 
     // If the TASK "" exists and is open, then reset the value of the KIT ID and redirect to the TASK
-    $tasks = $api->case_get_task_list($admission->getCaseId(), null, null, '{"admission" : "' . $admission->getId() . '"}');
+    try {
+        $filter = new TaskFilter();
+        $filter->setObjectType('TASKS');
+        $tasks = $api->admission_get_task_list($admission->getId(), null, null, $filter);
+    } catch (Exception $e) {
+        // Ignore error
+        $tasks = [];
+    }
     $firstOpenTask = null;
     $firstTask = null;
     foreach ($tasks as $t) {
@@ -407,9 +404,6 @@ function loadAdmissionFromPrescription($subscription, $kitInfo, $prescription, $
         $searchCondition->identifier->value = $prescription->getParticipantId($subscription->getTeam()->getCode());
         // $searchCondition->identifier->program = $subscription->getProgram()->getId();
         // $searchCondition->identifier->team = $subscription->getTeam()->getId();
-        if ($api->errorCode()) {
-            throw new APIException($api->errorCode(), $api->errorMessage());
-        }
         $casesByParticipant = $api->case_search(json_encode($searchCondition));
     }
     if (!empty($casesByParticipant)) {
@@ -422,9 +416,6 @@ function loadAdmissionFromPrescription($subscription, $kitInfo, $prescription, $
         $searchCondition->data_code->name = 'PRESCRIPTION_ID';
         $searchCondition->data_code->value = $prescription->getId();
         $casesByPrescription = $api->case_search(json_encode($searchCondition));
-        if ($api->errorCode()) {
-            throw new APIException($api->errorCode(), $api->errorMessage());
-        }
         if (!empty($casesByPrescription)) {
             // Ensure that the PRESCRIPTION ID does not correspond to another CASE
             $found = false;
@@ -466,9 +457,6 @@ function loadAdmissionFromPrescription($subscription, $kitInfo, $prescription, $
         $searchCondition->data_code->name = 'KIT_ID';
         $searchCondition->data_code->value = $kitInfo->getId();
         $kitAdmissions = $api->case_admission_list($caseByDevice->getId(), true, $subscription->getId(), json_encode($searchCondition));
-        if ($api->errorCode()) {
-            throw new APIException($api->errorCode(), $api->errorMessage());
-        }
 
         $admissionFromKit = count($kitAdmissions) > 0 ? $kitAdmissions[0] : null; // There can only exist one Admission per device
         $foundAdmission = $admissionFromKit; // By now, this is the ADMISSION that we must use
@@ -489,9 +477,6 @@ function loadAdmissionFromPrescription($subscription, $kitInfo, $prescription, $
             $searchCondition->data_code->name = 'PRESCRIPTION_ID';
             $searchCondition->data_code->value = $prescription->getId();
             $prescriptionAdmissions = $api->case_admission_list($existingCaseId, true, $subscription->getId(), json_encode($searchCondition));
-            if ($api->errorCode()) {
-                throw new APIException($api->errorCode(), $api->errorMessage());
-            }
             foreach ($prescriptionAdmissions as $a) {
                 if (in_array($a->getStatus(), [APIAdmission::STATUS_ACTIVE, APIAdmission::STATUS_ENROLLED, APIAdmission::STATUS_INCOMPLETE])) {
                     $foundAdmission = $a;
@@ -566,30 +551,18 @@ function findSubscription($prescription, $defaultProgramCode = null) {
 
     if ($prescription && $prescription->getTeam()) {
         $team = $api->team_get($prescription->getTeam());
-        if ($api->errorCode()) {
-            throw new APIException($api->errorCode(), $api->errorMessage());
-        }
         $teamId = $team->getId();
     }
 
     // if ($api->getSession()->getTeamId() != $teamId) {
     // $api->session_set_team($teamId);
-    // if ($api->errorCode()) {
-    // throw new APIException($api->errorCode(), $api->errorMessage());
-    // }
     // }
     if ($api->getSession()->getRoleId() != 24) {
         $api->session_role(24);
-        if ($api->errorCode()) {
-            throw new APIException($api->errorCode(), $api->errorMessage());
-        }
     }
 
     if ($prescription && $prescription->getProgram()) {
         $program = $api->program_get($prescription->getProgram());
-        if ($api->errorCode()) {
-            throw new APIException($api->errorCode(), $api->errorMessage());
-        }
         $programId = $program->getId();
         $programCode = $program->getCode();
     } elseif ($defaultProgramCode) {
@@ -668,12 +641,6 @@ function initializeAdmission($kitInfo, $prescription, $caseId, $subscription, $a
 
         // Create a new CASE with incomplete data (only the KIT_ID)
         $caseId = $api->case_insert($contactInfo, $subscription->getId(), true);
-
-        if ($api->errorCode()) {
-            $lc2Action->setActionType(LC2Action::ACTION_ERROR_MSG);
-            $lc2Action->setErrorMessage($api->errorMessage());
-            return $lc2Action;
-        }
     }
 
     $lc2Action->setCaseId($caseId);
@@ -682,10 +649,14 @@ function initializeAdmission($kitInfo, $prescription, $caseId, $subscription, $a
     $admissionCreated = false;
     if (!$admission) {
         // Create an ADMISSION
-        $admission = $api->admission_create($caseId, $subscription->getId(), null, null, true,
-                $prescription ? $prescription->getPrescriptionData() : null);
+        try {
+            $admission = $api->admission_create($caseId, $subscription->getId(), null, null, true,
+                    $prescription ? $prescription->getPrescriptionData() : null);
+        } catch (Exception $e) {
+            $admission = null;
+        }
 
-        if (!$admission || $api->errorCode()) {
+        if (!$admission) {
             // An unexpected error happened while creating the ADMISSION: Delete the CASE
             $failed = true;
             $lc2Action->setActionType(LC2Action::ACTION_ERROR_MSG);
@@ -739,10 +710,18 @@ function initializeAdmission($kitInfo, $prescription, $caseId, $subscription, $a
 
     if ($failed) {
         if ($admission && $admissionCreated) {
-            $api->admission_delete($admission->getId());
+            try {
+                $api->admission_delete($admission->getId());
+            } catch (Exception $e) {
+                // Ignore errors
+            }
         }
         if ($isNewCase) {
-            $api->case_delete($caseId, "DELETE");
+            try {
+                $api->case_delete($caseId, "DELETE");
+            } catch (Exception $e) {
+                // Ignore errors
+            }
         }
     } else {
         if (!$GLOBALS["KIT_INFO_MGR"]) {
@@ -771,7 +750,11 @@ function updateAdmission($admission, $kitInfo) {
     $lc2Action->setAdmissionId($admission->getId());
     $lc2Action->setCaseId($admission->getCaseId());
 
-    $tasks = $api->case_get_task_list($admission->getCaseId(), null, null, '{"admission" : "' . $admission->getId() . '"}');
+    $filter = new TaskFilter();
+    $filter->setObjectType('TASKS');
+    $taskCodes = [$GLOBALS["TASK_CODES"]["KIT_RESULTS"], $GLOBALS["TASK_CODES"]["REGISTER_KIT"]];
+    $filter->setTaskCodes(implode(',', $taskCodes));
+    $tasks = $api->admission_get_task_list($admission->getId(), null, null, $filter);
     $kitResultsTask = null;
     $registerKitTask = null;
     foreach ($tasks as $t) {
@@ -788,11 +771,6 @@ function updateAdmission($admission, $kitInfo) {
     if (!$kitResultsTask && $registerKitTask) {
         // If KIT_RESULTS TASK does not exist, then redirect to the first open FORM of REGISTER_KIT
         $forms = $api->task_activity_list($registerKitTask->getId());
-        if ($api->errorCode()) {
-            // An unexpected error happened while obtaining the list of activities
-            throw new APIException($api->errorCode(), $api->errorMessage());
-        }
-
         $lastForm = null;
         foreach ($forms as $form) {
             $lastForm = $form;
@@ -807,11 +785,6 @@ function updateAdmission($admission, $kitInfo) {
     if ($kitResultsTask && !$kitResultsTask->getLocked()) {
         // If the TASK is not locked, store the KIT ID in an ITEM of KIT_RESULTS TASK
         $forms = $api->task_activity_list($kitResultsTask->getId());
-        if ($api->errorCode()) {
-            // An unexpected error happened while obtaining the list of activities
-            throw new APIException($api->errorCode(), $api->errorMessage());
-        }
-
         $targetForm = null;
         foreach ($forms as $form) {
             if ($form->getFormCode() == $GLOBALS["FORM_CODES"]["KIT_RESULTS"]) {
@@ -823,10 +796,6 @@ function updateAdmission($admission, $kitInfo) {
 
         if ($targetForm) {
             $api->form_set_answer($targetForm->getId(), $GLOBALS["KIT_RESULTS_Q_ID"]["KIT_ID"], $kitInfo->getId());
-            if ($api->errorCode()) {
-                // An unexpected error happened while obtaining the list of activities
-                throw new APIException($api->errorCode(), $api->errorMessage());
-            }
         }
     }
 
@@ -863,23 +832,10 @@ function updateAdmission($admission, $kitInfo) {
 function createKitInfoTask($admissionId, $kitInfo) {
     $api = LinkcareSoapAPI::getInstance();
     $taskId = $api->task_insert_by_task_code($admissionId, $GLOBALS["TASK_CODES"]["KIT_INFO"]);
-    if ($api->errorCode() || !$taskId) {
-        // An unexpected error happened while creating the TASK
-        throw new APIException($api->errorCode(), $api->errorMessage());
-    }
-
     $task = $api->task_get($taskId);
-    if ($api->errorCode()) {
-        // An unexpected error happened while getting TASK information
-        throw new APIException($api->errorCode(), $api->errorMessage());
-    }
 
     // TASK inserted. Now update the questions with the Kit Information
     $forms = $api->task_activity_list($taskId);
-    if ($api->errorCode()) {
-        // An unexpected error happened while obtaining the list of activities
-        throw new APIException($api->errorCode(), $api->errorMessage());
-    }
     $targetForm = null;
     foreach ($forms as $form) {
         if ($form->getFormCode() == $GLOBALS["FORM_CODES"]["KIT_INFO"]) {
@@ -918,10 +874,6 @@ function createKitInfoTask($admissionId, $kitInfo) {
             $arrQuestions[] = $q;
         }
         $api->form_set_all_answers($targetForm->getId(), $arrQuestions, true);
-        if ($api->errorCode()) {
-            // An unexpected error happened while obtaining the list of activities
-            throw new APIException($api->errorCode(), $api->errorMessage());
-        }
     } else {
         throw new APIException("FORM NOT FOUND", "KIT INFO FORM NOT FOUND: (" . $GLOBALS["FORM_CODES"]["KIT_INFO"] . ")");
     }
@@ -929,7 +881,11 @@ function createKitInfoTask($admissionId, $kitInfo) {
     $task->clearAssignments();
     $a = new APITaskAssignment(APITaskAssignment::SERVICE, null, null);
     $task->addAssignments($a);
-    $api->task_set($task);
+    try {
+        $api->task_set($task);
+    } catch (Exception $e) {
+        // Ignore error
+    }
 
     return $taskId;
 }
@@ -948,23 +904,10 @@ function createKitInfoTask($admissionId, $kitInfo) {
 function createPrescriptionInfoTask($admissionId, $prescription) {
     $api = LinkcareSoapAPI::getInstance();
     $taskId = $api->task_insert_by_task_code($admissionId, $GLOBALS["TASK_CODES"]["PRESCRIPTION_INFO"]);
-    if ($api->errorCode() || !$taskId) {
-        // An unexpected error happened while creating the TASK
-        throw new APIException($api->errorCode(), $api->errorMessage());
-    }
-
     $task = $api->task_get($taskId);
-    if ($api->errorCode()) {
-        // An unexpected error happened while getting TASK information
-        throw new APIException($api->errorCode(), $api->errorMessage());
-    }
 
     // TASK inserted. Now update the questions with the prescription Information
     $forms = $api->task_activity_list($taskId);
-    if ($api->errorCode()) {
-        // An unexpected error happened while obtaining the list of activities
-        throw new APIException($api->errorCode(), $api->errorMessage());
-    }
     $targetForm = null;
     foreach ($forms as $form) {
         if ($form->getFormCode() == $GLOBALS["FORM_CODES"]["PRESCRIPTION_INFO"]) {
@@ -989,10 +932,6 @@ function createPrescriptionInfoTask($admissionId, $prescription) {
             $arrQuestions[] = $q;
         }
         $api->form_set_all_answers($targetForm->getId(), $arrQuestions, true);
-        if ($api->errorCode()) {
-            // An unexpected error happened while obtaining the list of activities
-            throw new APIException($api->errorCode(), $api->errorMessage());
-        }
     } else {
         throw new APIException("FORM NOT FOUND", "PRESCRIPTION INFO FORM NOT FOUND: (" . $GLOBALS["FORM_CODES"]["PRESCRIPTION_INFO"] . ")");
     }
@@ -1000,7 +939,11 @@ function createPrescriptionInfoTask($admissionId, $prescription) {
     $task->clearAssignments();
     $a = new APITaskAssignment(APITaskAssignment::SERVICE, null, null);
     $task->addAssignments($a);
-    $api->task_set($task);
+    try {
+        $api->task_set($task);
+    } catch (Exception $e) {
+        // Ignore error
+    }
 
     return $taskId;
 }
@@ -1018,10 +961,6 @@ function createPrescriptionInfoTask($admissionId, $prescription) {
 function createRegisterKitTask($admissionId) {
     $api = LinkcareSoapAPI::getInstance();
     $taskId = $api->task_insert_by_task_code($admissionId, $GLOBALS["TASK_CODES"]["REGISTER_KIT"]);
-    if ($api->errorCode() || !$taskId) {
-        // An unexpected error happened while creating the TASK
-        throw new APIException($api->errorCode(), $api->errorMessage());
-    }
 
     if ($api->getSession()->getRoleId() != APITaskAssignment::PATIENT) {
         /*
@@ -1033,22 +972,18 @@ function createRegisterKitTask($admissionId) {
          *
          */
         $task = $api->task_get($taskId);
-        if ($api->errorCode()) {
-            // An unexpected error happened while getting TASK information
-            throw new APIException($api->errorCode(), $api->errorMessage());
-        }
         $task->clearAssignments();
         $a = new APITaskAssignment(APITaskAssignment::CASE_MANAGER, null, null);
         $task->addAssignments($a);
-        $api->task_set($task);
+        try {
+            $api->task_set($task);
+        } catch (Exception $e) {
+            // Ignore error
+        }
     }
 
     // TASK inserted. Now update the questions with the Kit Information
     $forms = $api->task_activity_list($taskId);
-    if ($api->errorCode()) {
-        // An unexpected error happened while obtaining the list of activities
-        throw new APIException($api->errorCode(), $api->errorMessage());
-    }
 
     if (count($forms) > 1) {
         /* @var APIForm $targetForm */
@@ -1075,21 +1010,17 @@ function createRegisterKitTask($admissionId) {
 function createScanKitTask($admissionId) {
     $api = LinkcareSoapAPI::getInstance();
     $taskId = $api->task_insert_by_task_code($admissionId, $GLOBALS["TASK_CODES"]["SCAN_KIT"]);
-    if ($api->errorCode() || !$taskId) {
-        // An unexpected error happened while creating the TASK
-        throw new APIException($api->errorCode(), $api->errorMessage());
-    }
 
     $task = $api->task_get($taskId);
-    if ($api->errorCode()) {
-        // An unexpected error happened while getting TASK information
-        throw new APIException($api->errorCode(), $api->errorMessage());
-    }
 
     $task->clearAssignments();
     $a = new APITaskAssignment(APITaskAssignment::SERVICE, null, null);
     $task->addAssignments($a);
-    $api->task_set($task);
+    try {
+        $api->task_set($task);
+    } catch (Exception $e) {
+        // Ignore error
+    }
 
     return $taskId;
 }

@@ -24,6 +24,11 @@ $GLOBALS["DEFAULT_TIMEZONE"] = "Europe/Madrid";
 // Url of the WS-API where the ADMISSIONs will be created
 $GLOBALS["WS_LINK"] = "https://test-api.linkcareapp.com/ServerWSDL.php";
 
+// Credentials of the SERVICE USER (used by Gatekeeper)
+$GLOBALS['SERVICE_USER'] = 'service';
+$GLOBALS['SERVICE_PASSWORD'] = 'password';
+$GLOBALS['SERVICE_TEAM'] = 'LINKCARE';
+
 /*
  * Url of the external service that manages the KIT Information. Used to update the Kit Status. If not provided then it is assumed that we have local
  * access to the DB and it is not necessary to invoke a remote service to change the status of a kit

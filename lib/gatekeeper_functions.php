@@ -32,77 +32,68 @@ function checkTestResults($prescription) {
     $results->output = null;
     $results->expiration = null;
 
+    $timezone = "0";
+    $session = null;
+
+    try {
+        LinkcareSoapAPI::setEndpoint($GLOBALS["WS_LINK"]);
+        LinkcareSoapAPI::session_init($GLOBALS['SERVICE_USER'], $GLOBALS['SERVICE_PASSWORD'], 0, true);
+        $team = $GLOBALS['SERVICE_TEAM'];
+        $role = 47;
+        $session = LinkcareSoapAPI::getInstance()->getSession();
+        // Ensure to set the correct active ROLE and TEAM
+        if ($team && $team != $session->getTeamCode() && $team != $session->getTeamId()) {
+            LinkcareSoapAPI::getInstance()->session_set_team($team);
+        }
+        if ($role && $session->getRoleId() != $role) {
+            LinkcareSoapAPI::getInstance()->session_role($role);
+        }
+    } catch (APIException $e) {
+        $results->error = 'Service user cannot connect to API. Contact a system administrator to solve the problem';
+        return $results;
+    } catch (Exception $e) {
+        $results->error = 'Service user cannot connect to API. Contact a system administrator to solve the problem';
+        return $results;
+    }
+
     if (!$prescription) {
         $results->error = 'Invalid QR';
         return $results;
     }
 
-    try {
-        $dbConnResult = Database::init($GLOBALS["APIDBConnection_URI"]);
-        if ($dbConnResult !== true) {
-            $results->error = "Cannot initialize DB. Contact a system administrator to solve the problem";
-            service_log("ERROR: Cannot connect to DB");
-            return $results;
-        }
-    } catch (Exception $e) {
-        $results->error = "Cannot initialize DB. Contact a system administrator to solve the problem";
-        service_log("ERROR: Cannot initialize DB: " . $e->getMessage());
-        return $results;
-    }
-
-    $patientId = null;
-    $programId = null;
+    $patient = null;
     $found = false;
+
+    $api = LinkcareSoapAPI::getInstance();
 
     if ($prescription->getAdmissionId()) {
         // We know the ADMISSION. Use it to obtain the PATIENT and the PROGRAM
-        $sql = 'SELECT IIDPATPATIENT,ID_PROGRAMA FROM TBPRGPATIENTPROGRAMME t WHERE IIDPATIENTPROGRAMME = :id';
-        $rst = Database::getInstance()->ExecuteBindQuery($sql, $prescription->getAdmissionId());
-        if ($rst->Next()) {
-            $patientId = $rst->GetField('IIDPATPATIENT');
-            $programId = $rst->GetField('ID_PROGRAMA');
-        }
+        $admission = $api->admission_get($prescription->getAdmissionId());
+        $patient = $api->case_get($admission->getCaseId());
+        $program = $admission->getSubscription()->getProgram();
         $found = true;
+    } else {
+        $program = $api->program_get($prescription->getProgram());
+    }
+
+    if (!$program) {
+        $results->error = 'PROGRAM missing';
+        return $results;
     }
 
     if (!$found && $prescription->getParticipantId()) {
         /*
          * We know the participant ID. Use it to obtain the PATIENT
          */
-        if ($prescription->getProgram()) {
-            if (!is_numeric($prescription->getProgram())) {
-                // We have a PROGRAM CODE. Find the PROGRAM ID
-                $sql = 'SELECT ID_PROGRAMA FROM PROGRAMAS p WHERE PROG_CODE = :id';
-                $rst = Database::getInstance()->ExecuteBindQuery($sql, $prescription->getProgram());
-                if ($rst->Next()) {
-                    $programId = $rst->GetField('ID_PROGRAMA');
-                } else {
-                    $results->error = 'PROGRAM not found ' . $prescription->getProgram();
-                    return $results;
-                }
-            } else {
-                $programId = $prescription->getProgram();
-            }
-        }
-
-        if (!$programId) {
-            $results->error = 'PROGRAM not found ' . $prescription->getProgram();
-            return $results;
-        }
-
-        $arrVariables = [':participantId' => $prescription->getParticipantId()];
-        $sql = "SELECT p.IIDPATPATIENT, i.TEAM_ID, i.PROGRAM_ID FROM IDENTIFIERS i, TBPATPATIENT p
-            WHERE i.CODE ='" . $GLOBALS['PARTICIPANT_IDENTIFIER'] .
-                "' AND VALUE = :participantId
-                AND p.IIDGNRPERSON = i.PERSON_ID ORDER BY IIDPATPATIENT DESC";
-        $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
-        $patientsFound = [];
-        while ($rst->Next()) {
-            $patientsFound[] = $rst->GetField('IIDPATPATIENT');
-        }
-
+        $searchCondition = new StdClass();
+        $searchCondition->identifier = new StdClass();
+        $searchCondition->program = $program->getId();
+        $searchCondition->identifier->code = $GLOBALS['PARTICIPANT_IDENTIFIER'];
+        $searchCondition->identifier->value = $prescription->getParticipantId();
+        $patientsFound = $api->case_search(json_encode($searchCondition));
         if (count($patientsFound) == 1) {
-            $patientId = reset($patientsFound);
+            /* @var APICase $p */
+            $patient = reset($patientsFound);
             $found = true;
         } else {
             $results->error = 'Not enough information to find participant with ref: ' . $prescription->getParticipantId();
@@ -112,58 +103,62 @@ function checkTestResults($prescription) {
 
     if (!$found && $prescription->getId()) {
         /* We know the PRESCRIPTION ID. Use it to obtain the ADMISSION, and then the PATIENT and PROGRAM */
-        $arrVariables = ['prescriptionId' => $prescription->getId()];
-        $sql = "SELECT DISTINCT a.IIDPATPATIENT, a.ID_PROGRAMA FROM TBPRGPATIENTPROGRAMME a, PRESTACIONES_INGRESO t, CUESTIONARIOS c ,RESPUESTAS r
-                WHERE
-                	a.DELETED IS NULL
-                	AND t.ID_INGRESO = a.IIDPATIENTPROGRAMME AND t.DELETED IS NULL
-                	AND c.TASK_ID  = t.ID_PRESTACION_INGRESO AND c.DELETED IS NULL
-                	AND r.ID_CUESTIONARIO = c.ID_CUESTIONARIO AND r.DATA_CODE = 'PRESCRIPTION_ID' AND r.RESPUESTA = :prescriptionId";
+        $searchCondition = new StdClass();
+        $searchCondition->program = $program->getId();
+        $searchCondition->data_code = new StdClass();
+        $searchCondition->data_code->name = 'PRESCRIPTION_ID';
+        $searchCondition->data_code->value = $prescription->getId();
+        $patientsFound = $api->case_search(json_encode($searchCondition));
 
-        $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
-        $count = 0;
-        while ($rst->Next()) {
-            $patientId = $rst->GetField('IIDPATPATIENT');
-            $programId = $rst->GetField('ID_PROGRAMA');
-            $count++;
-        }
-        if ($count > 1) {
+        if (count($patientsFound) > 1) {
             $results->error = 'More than one participant found with the same prescription ' . $prescription->getId();
             return $results;
+        } elseif (count($patientsFound) == 1) {
+            /* @var APICase $p */
+            $patient = reset($patientsFound);
+            $found = true;
         }
     }
 
-    if (!$programId || !$patientId) {
-        // It is necessary to know PROGRAM and PATIENT
+    if (!$patient) {
+        // Couldn't find the patient
         return $results;
     }
 
-    $results->patientId = $patientId;
+    $results->patientId = $patient->getId();
     /*
      * Find the last ADMISSION of the PATIENT in the desired PROGRAM with a finished TEST and obtain the OUTPUT
      * Only use ENROLLED, ACTIVE or DISCHARGED ADMISSIONs
      */
-    $arrVariables = [':patientId' => $patientId, ':programId' => $programId];
-    $sql = "SELECT adm.IIDPATIENTPROGRAMME, adm.OUTPUT, adm.OUTPUT_VALIDITY, pi.FECHA_HORA_FIN AS TEST_DATE, pi.ID_ESTADO
-        	FROM TBPRGPATIENTPROGRAMME adm , PRESTACIONES_INGRESO pi
-        	WHERE IIDPATPATIENT = :patientId AND ID_PROGRAMA = :programId
-        	    AND adm.DELETED IS NULL
-        	    AND adm.IIDPRGPATIENTPROGRAMMESTATE IN (1,4,5)
-        	    AND pi.ID_INGRESO = adm.IIDPATIENTPROGRAMME
-        	    AND pi.DELETED IS NULL
-        	    AND pi.TASK_CODE IN ('KIT_RESULTS', 'KIT_RESULTS_INTRODUCTION')             
-            ORDER BY pi.FECHA_HORA_FIN DESC NULLS FIRST";
+    $filter = new TaskFilter();
+    $filter->setObjectType('TASKS');
+    $filter->setTaskCodes('KIT_RESULTS,KIT_RESULTS_INTRODUCTION');
+    $filter->setProgramIds($program->getId());
+    $tasks = $api->case_get_task_list($patient->getId(), null, null, $filter);
 
-    $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
+    $sortedTasks = [];
+    foreach ($tasks as $t) {
+        $date = $t->getDate() ? $t->getDate() : '9999-99-99';
+        $time = $t->getHour() ? $t->getHour() : '99:99:99';
+        $key = sprintf("%s %s/%010d", $date, $time, $t->getId());
+        $sortedTasks[$key] = $t;
+    }
+    // Sort by date descending (null dates first)
+    krsort($sortedTasks);
+
     $existsTestInProgress = false;
-    while ($rst->Next()) {
-        if ($rst->GetField('ID_ESTADO') != APITask::STATUS_DONE) {
+    foreach ($sortedTasks as $t) {
+        $admission = $api->admission_get($t->getAdmissionId());
+        if (in_array($t->getStatus(), ['OPEN', 'ASSIGNED/NOT DONE'])) {
             $existsTestInProgress = true;
+            $results->result = DIAGNOSTIC_IN_PROGRESS;
+            continue;
         }
         // Verify that the result is still valid
-        $results->output = $rst->GetField('OUTPUT');
-        $results->date = $rst->getField('TEST_DATE');
-        $results->admissionId = $rst->GetField('IIDPATIENTPROGRAMME');
+        $output = $admission->getPerformance()->getOutput();
+        $results->output = $output->getValue();
+        $results->date = $t->getDate() . ' ' . $t->getHour();
+        $results->admissionId = $admission->getId();
 
         switch ($results->output) {
             case 2 :
@@ -179,18 +174,11 @@ function checkTestResults($prescription) {
                 }
         }
 
-        $expiration = $rst->GetField('OUTPUT_VALIDITY');
+        $expiration = $output->getValidity();
         if ($expiration) {
             // Verify that the test is still valid
             $results->expiration = $expiration;
-
-            $sql = 'SELECT u.TIMEZONE FROM TBPATPATIENT p, TBGNRUSER u WHERE p.IIDPATPATIENT = :id AND u.IIDGNRPERSON = p.IIDGNRPERSON';
-            $rstTimezone = Database::getInstance()->ExecuteBindQuery($sql, $patientId);
-            if ($rstTimezone->Next()) {
-                $timezone = $rstTimezone->GetField('TIMEZONE');
-            } else {
-                $timezone = 0;
-            }
+            $timezone = $patient->getTimezone();
 
             $currentDate = currentDate($timezone);
             if ($results->expiration < $currentDate) {

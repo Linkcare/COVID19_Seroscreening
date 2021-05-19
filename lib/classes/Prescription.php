@@ -176,6 +176,10 @@ class Prescription {
         $this->prescriptionData->rounds = max(intval($value), 1);
     }
 
+    function setAdmissionId($value) {
+        $this->prescriptionData->admission = $value;
+    }
+
     // **************************************************************
     // PUBLIC FUNCTIONS
     // **************************************************************

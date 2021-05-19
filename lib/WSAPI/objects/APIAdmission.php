@@ -22,8 +22,17 @@ class APIAdmission {
     private $status;
     private $dateToDisplay;
     private $ageToDisplay;
+    /** @var APISubscription */
     private $subscription;
+    /** @var APIAdmissionPerformance */
+    private $performance;
     private $isNewAdmission = false;
+    /** @var LinkcareSoapAPI $api */
+    private $api;
+
+    public function __construct() {
+        $this->api = LinkcareSoapAPI::getInstance();
+    }
 
     /**
      *
@@ -56,6 +65,11 @@ class APIAdmission {
             $admission->ageToDisplay = NullableInt($xmlNode->data->age_to_display);
             if ($xmlNode->data->subscription) {
                 $admission->subscription = APISubscription::parseXML($xmlNode->data->subscription);
+            }
+            if ($xmlNode->performance) {
+                $admission->performance = APIAdmissionPerformance::parseXML($xmlNode->performance);
+            } else {
+                $admission->performance = new APIAdmissionPerformance();
             }
         }
         return $admission;
@@ -181,5 +195,50 @@ class APIAdmission {
      */
     public function getSubscription() {
         return $this->subscription;
+    }
+
+    /**
+     *
+     * @return APIAdmissionPerformance
+     */
+    public function getPerformance() {
+        return $this->performance;
+    }
+
+    /*
+     * **********************************
+     * METHODS
+     * **********************************
+     */
+    /**
+     *
+     * @param int $maxRes
+     * @param int $offset
+     * @param TaskFilter $filter
+     * @param boolean $ascending
+     * @return APITask[]
+     */
+    public function getTaskList($maxRes = null, $offset = null, $filter = null, $ascending = true) {
+        if (!$filter) {
+            $filter = new TaskFilter();
+        }
+        $filter->setObjectType('TASKS');
+        return $this->api->admission_get_task_list($this->id, $maxRes, $offset, $filter, $ascending);
+    }
+
+    /**
+     *
+     * @param int $maxRes
+     * @param int $offset
+     * @param TaskFilter $filter
+     * @param boolean $ascending
+     * @return APIEvent[]
+     */
+    public function getEventList($maxRes = null, $offset = null, $filter = null, $ascending = true) {
+        if (!$filter) {
+            $filter = new TaskFilter();
+        }
+        $filter->setObjectType('EVENTS');
+        return $this->api->admission_get_task_list($this->id, $maxRes, $offset, $filter, $ascending);
     }
 }

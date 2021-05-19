@@ -17,11 +17,21 @@ class APITask {
     private $status;
     private $recursive;
     private $locked;
+    /** @var string */
+    private $admissionId;
+    /** @var string */
+    private $caseId;
 
-    /* @var APITaskAssignment[] $assignments */
+    /** @var APITaskAssignment[] $assignments */
     private $assignments = [];
-    /* @var APIForm[] $forms */
-    private $forms = [];
+    /** @var APIForm[] $forms */
+    private $forms = null;
+    /** @var LinkcareSoapAPI $api */
+    private $api;
+
+    public function __construct() {
+        $this->api = LinkcareSoapAPI::getInstance();
+    }
 
     /**
      *
@@ -42,14 +52,25 @@ class APITask {
         $task->name = NullableString($xmlNode->name);
         $task->description = NullableString($xmlNode->description);
 
-        $task->date = NullableString($xmlNode->date);
+        $date = NullableString($xmlNode->date);
+        $dateParts = $date ? explode(' ', $date) : [null];
+        $task->date = $dateParts[0];
         $task->hour = NullableString($xmlNode->hour);
+        if (!$task->hour && count($dateParts) > 1) {
+            $task->hour = $dateParts[1];
+        }
         $task->duration = NullableInt($xmlNode->duration);
         $task->followReport = NullableString($xmlNode->follow_report);
         $task->status = NullableString($xmlNode->status);
         $task->recursive = NullableString($xmlNode->recursive);
         $task->locked = textToBool($xmlNode->locked);
 
+        if ($xmlNode->admission) {
+            $task->admissionId = NullableString($xmlNode->admission->ref);
+        }
+        if ($xmlNode->case) {
+            $task->caseId = NullableString($xmlNode->case->ref);
+        }
         $assignments = [];
         if ($xmlNode->assignments) {
             foreach ($xmlNode->assignments->assignment as $assignNode) {
@@ -169,11 +190,46 @@ class APITask {
         return $this->forms;
     }
 
+    /**
+     *
+     * @return string
+     */
+    public function getAdmissionId() {
+        return $this->admissionId;
+    }
+
+    /**
+     *
+     * @return string
+     */
+    public function getCaseId() {
+        return $this->caseId;
+    }
+
     /*
      * **********************************
      * SETTERS
      * **********************************
      */
+    /**
+     *
+     * @param string $date
+     */
+    public function setDate($date) {
+        if ($date) {
+            $date = explode(' ', $date)[0]; // Remove time part
+        }
+        $this->date = $date;
+    }
+
+    /**
+     *
+     * @param string $date
+     */
+    public function setHour($time) {
+        $this->hour = $time;
+    }
+
     /**
      * Adds a new assignment to a TASK
      *
@@ -196,6 +252,25 @@ class APITask {
      */
     public function clearAssignments() {
         $this->assignments = [];
+    }
+
+    /**
+     * Searches the FORM with the $formId indicated
+     *
+     * @param int $formId
+     * @return APIForm
+     */
+    public function findForm($formId) {
+        if ($this->forms === null) {
+            $this->forms = $this->api->task_activity_list($this->id);
+        }
+        foreach ($this->forms as $f) {
+            if ($f->getId() == $formId || $f->getFormCode() == $formId) {
+                return $f;
+            }
+        }
+
+        return null;
     }
 
     /**
