@@ -89,8 +89,14 @@ function checkTestResults($prescription) {
         $searchCondition->identifier = new StdClass();
         $searchCondition->program = $program->getId();
         $searchCondition->identifier->code = $GLOBALS['PARTICIPANT_IDENTIFIER'];
-        $searchCondition->identifier->value = $prescription->getParticipantId();
+        $participantId = $prescription->getParticipantId();
+        if (strpos($prescription->getParticipantId(), '@') === false && $prescription->getTeam()) {
+            $participantId = $participantId . '@' . $prescription->getTeam();
+        }
+
+        $searchCondition->identifier->value = $participantId;
         $patientsFound = $api->case_search(json_encode($searchCondition));
+
         if (count($patientsFound) == 1) {
             /* @var APICase $p */
             $patient = reset($patientsFound);
