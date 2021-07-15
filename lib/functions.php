@@ -6,7 +6,7 @@
  * @param KitInfo $kitInfo
  * @return LC2Action
  */
-function service_dispatch_kit($token = null, $kitInfo, $subscriptionId) {
+function service_dispatch_kit($token = null, $kitInfo, $subscriptionId = null) {
     $timezone = "0";
 
     if (!$GLOBALS["KIT_INFO_MGR"]) {
@@ -666,7 +666,7 @@ function initializeAdmission($kitInfo, $prescription, $caseId, $subscription, $a
         if (!$admission->isNew()) {
             // There already exists an active Admission for the patient. Cannot create a new Admission
             $error = new ErrorInfo(ErrorInfo::ADMISSION_ACTIVE);
-            $lc2Action->setActionType(LC2Action::ACTION_ERROR_MSG);
+            $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_CASE);
             $lc2Action->setErrorMessage($error->getErrorMessage());
             return $lc2Action;
         }
