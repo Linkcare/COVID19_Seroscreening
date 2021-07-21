@@ -86,6 +86,16 @@ class Prescription {
         } else {
             if ($prescriptionStr) {
                 $pd = json_decode(base64_decode($prescriptionStr));
+                // Temporary change implemented to solve a problem in Andorra, where due to an error a lot of duplicated prescriptionIds were
+                // generated
+                // if ($pd->id) {
+                // $tz_object = new DateTimeZone('UTC');
+                // $datetime = new DateTime();
+                // $datetime->setTimezone($tz_object);
+                // $today = $datetime->format('Ymd_His');
+                // $pd->id = $today . $pd->id;
+                // }
+
                 if ($pd) {
                     $this->prescriptionData = $pd;
                     $this->valid = (trim($pd->id) && trim($pd->program)) || trim($pd->admission);
@@ -220,16 +230,16 @@ class Prescription {
      */
     public function toJSON() {
         $obj = new StdClass();
-        $obj->id = $this->prescriptionData->id;
-        $obj->program = $this->prescriptionData->program;
-        $obj->team = $this->prescriptionData->team;
-        $obj->expirationDate = $this->prescriptionData->expiration;
-        $obj->participantId = $this->prescriptionData->participant;
-        $obj->rounds = $this->prescriptionData->rounds;
+        $obj->id = $this->getId();
+        $obj->program = $this->getProgram();
+        $obj->team = $this->getTeam();
+        $obj->expirationDate = $this->getExpirationDate();
+        $obj->participantId = $this->getParticipantId();
+        $obj->rounds = $this->getRounds();
         $obj->name = $this->getFullName();
-        $obj->email = $this->prescriptionData->email;
-        $obj->phone = $this->prescriptionData->phone;
-        $obj->admissionId = $this->prescriptionData->admission;
+        $obj->email = $this->getEmail();
+        $obj->phone = $this->getPhone();
+        $obj->admissionId = $this->getAdmissionId();
 
         $obj->success = $this->valid ? 1 : 0;
         $obj->type = $this->type;

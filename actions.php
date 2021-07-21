@@ -20,6 +20,9 @@ if ($_GET['action'] == 'check_test_results') {
     $res->date = $testInfo->date;
     $res->expiration = $testInfo->expiration;
     $res->error = $testInfo->error;
+    $res->patientId = $testInfo->patientId;
+    $res->admissionId = $testInfo->admissionId;
+
     echo json_encode($res);
 
     try {
