@@ -27,8 +27,16 @@ class Prescription {
     private $withCheckDigit;
 
     /**
+     * Creates a Prescription object from a string that can have the following formats:
+     * <ul>
+     * <li>A Base64 encoded string containing a JSON with prescription info</li>
+     * <li>An URL with a parameter called 'prescription' that is a Base64 encoded string containing a JSON with prescription info.
+     * Example: https://covid19-service.linkcareapp.com/?prescription=jkasdkajshdakldasdasdjahjdshgoeqwruiqrhasjk</li>
+     * <li>An URL without parameters a parameter called 'prescription' that is a Base64 encoded string containing a JSON with prescription info.
+     * Example: https://covid19-service.linkcareapp.com/?prescription=jkasdkajshdakldasdasdjahjdshgoeqwruiqrhasjk</li>
+     * </ul>
      *
-     * @param string $prescriptionStr Semicolon separated string with the information aobut the prescription
+     * @param string $prescriptionStr
      * @param boolean $allowParticipantId (default = false) If true, the value in $str can be a single value that will be interpreted as the
      *        ParticipantId
      */
@@ -40,6 +48,21 @@ class Prescription {
         if (!$prescriptionStr && !$participant) {
             return;
         }
+
+        $prescriptionStr = str_replace(chr(10), '', $prescriptionStr);
+        // The prescription string may include a URL
+        $matches = null;
+        if (preg_match('~^http[s]?://.*[/]?\?prescription=(.*)$~', $prescriptionStr, $matches)) {
+            // Example: https://covid19-service.linkcareapp.com/?prescription=jkasdkajshdakldasdasdjahjdshgoeqwruiqrhasjk
+
+            // Keep only the part that is not in the domain name
+            $prescriptionStr = $matches[1];
+        } elseif (preg_match('~^http[s]?://.*/(.*)$~', $prescriptionStr, $matches)) {
+            // Example: https://covid19-service.linkcareapp.com/jkasdkajshdakldasdasdjahjdshgoeqwruiqrhasjk
+            // Keep only the part that is not in the domain name
+            $prescriptionStr = $matches[1];
+        }
+
         if (startsWith('adm=', $prescriptionStr)) {
             $parts = explode(';', $prescriptionStr);
             // ePrescription with the ADMISSION information

@@ -22,7 +22,7 @@ const DIAGNOSTIC_EXPIRED = 4;
  * @param Prescription $prescription
  * @return StdClass
  */
-function checkTestResults($prescription) {
+function checkGatekeeperAccess($prescription) {
     $results = new StdClass();
     $results->result = DIAGNOSTIC_UNKNOWN;
     $results->date = '';
@@ -32,7 +32,6 @@ function checkTestResults($prescription) {
     $results->output = null;
     $results->expiration = null;
 
-    $timezone = "0";
     $session = null;
 
     try {
@@ -56,11 +55,52 @@ function checkTestResults($prescription) {
         return $results;
     }
 
+    try {
+        $result = checkTestResults($prescription);
+    } catch (APIException $e) {
+        $results->error = $e->getMessage();
+        return $results;
+    } catch (Exception $e) {
+        $results->error = $e->getMessage();
+        return $results;
+    }
+
+    return $result;
+}
+
+/**
+ * Given a $participantQR, the functions locates the participant and returns the result of the last test.
+ * The function returns an object with the following properties:
+ * <ul>
+ * <li>result: numeric value with the result of the test. Possible values are:</li>
+ * <ul>
+ * <li>0 = No valid test found</li>
+ * <li>1 = Negative diagnostic</li>
+ * <li>2 = Positive diagnostic</li>
+ * </ul>
+ * <li>date: date when the test was done (format yyyy-mm-dd hh:mm:ss)</li>
+ * <li>error: error message (if any)
+ * </ul>
+ *
+ * @param Prescription $prescription
+ * @return StdClass
+ */
+function checkTestResults($prescription) {
+    $results = new StdClass();
+    $results->result = DIAGNOSTIC_UNKNOWN;
+    $results->date = '';
+    $results->error = '';
+    $results->patientId = null;
+    $results->admissionId = null;
+    $results->output = null;
+    $results->expiration = null;
+
     if (!$prescription) {
         $results->error = 'Invalid QR';
         return $results;
     }
 
+    $timezone = "0";
     $patient = null;
     $found = false;
 

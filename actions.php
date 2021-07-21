@@ -12,8 +12,7 @@ if ($_GET['action'] == 'check_test_results') {
         $prescription->setProgram($_GET['program']);
         $prescription->setTeam($_GET['team']);
     }
-    $testInfo = checkTestResults($prescription);
-
+    $testInfo = checkGatekeeperAccess($prescription);
     header('Content-Type: application/json');
     // Pass only the necessary information as response to the request
     $res = new stdClass();
@@ -96,4 +95,3 @@ if ($_GET['action'] == 'check_test_results') {
         }
     }
 }
-
