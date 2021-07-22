@@ -649,21 +649,37 @@ function initializeAdmission($kitInfo, $prescription, $caseId, $subscription, $a
     $admissionCreated = false;
     if (!$admission) {
         // Create an ADMISSION
+        $invitationActive = false;
         try {
             $admission = $api->admission_create($caseId, $subscription->getId(), null, null, true,
                     $prescription ? $prescription->getPrescriptionData() : null);
+        } catch (APIException $e) {
+            if ($e->errorCode == 'SUBSCRIPTION.INVITATION_NOT_FINISHED') {
+                /*
+                 * There exists an ADMISSION with the same invitation reference and the invitation term has not passed. It is not possible to create a
+                 * new ADMISSION until the invitation term has passed
+                 */
+                $admission = null;
+                $invitationActive = true;
+            } else {
+                $admission = null;
+            }
         } catch (Exception $e) {
             $admission = null;
         }
 
-        if (!$admission) {
+        if ($invitationActive) {
+            $error = new ErrorInfo(ErrorInfo::INVITATION_ACTIVE);
+            $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_CASE);
+            $lc2Action->setErrorMessage($error->getErrorMessage());
+            return $lc2Action;
+        } elseif (!$admission) {
             // An unexpected error happened while creating the ADMISSION: Delete the CASE
             $failed = true;
             $lc2Action->setActionType(LC2Action::ACTION_ERROR_MSG);
             $lc2Action->setErrorMessage($api->errorMessage());
             return $lc2Action;
-        }
-        if (!$admission->isNew()) {
+        } elseif (!$admission->isNew()) {
             // There already exists an active Admission for the patient. Cannot create a new Admission
             $error = new ErrorInfo(ErrorInfo::ADMISSION_ACTIVE);
             $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_CASE);
