@@ -141,9 +141,16 @@ function processKit($kitInfo, $subscriptionId = null) {
             return $lc2Action;
         }
         $subscription = $foundAdmission->getSubscription();
-        $existingCaseId = $foundAdmission->getCaseId();
         $programId = $subscription->getProgram()->getId();
+        $existingCaseId = $foundAdmission->getCaseId();
         $teamId = $subscription->getTeam()->getId();
+        // Check if the active professional has access to the subscription
+        if (empty($api->subscription_list(['subscription' => $subscription->getId()]))) {
+            $error = new ErrorInfo(ErrorInfo::SUBSCRIPTION_FORBIDDEN);
+            $lc2Action = new LC2Action(LC2Action::ACTION_ERROR_MSG);
+            $lc2Action->setErrorMessage($error->getErrorMessage());
+            return $lc2Action;
+        }
     } elseif ($prescription) {
         if (!$subscription) {
             throw new KitException(ErrorInfo::SUBSCRIPTION_NOT_FOUND);

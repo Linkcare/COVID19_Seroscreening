@@ -17,6 +17,7 @@ class ErrorInfo {
     const INVITATION_ACTIVE = "INVITATION_ACTIVE";
     const ADMISSION_NOT_FOUND = "ADMISSION_NOT_FOUND";
     const ADMISSION_INCOMPLETE = "ADMISSION_INCOMPLETE";
+    const SUBSCRIPTION_FORBIDDEN = "SUBSCRIPTION_FORBIDDEN";
 
     /* Private members */
     private $errorCode;
