@@ -10,12 +10,13 @@ $kitInfo = new KitInfo();
 error_reporting(0);
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     try {
-        $kitInfo->setId($_POST["kit_id"]);
-        $kitInfo->setBatch_number($_POST["batch_number"]);
-        $kitInfo->setManufacture_place($_POST["manufacture_place"]);
-        $kitInfo->setManufacture_date($_POST["manufacture_date"]);
-        $kitInfo->setExp_date($_POST["expiration_date"]);
-        $kitInfo->setProgramCode($_POST["program"]);
+        $kitInfo->setId(urldecode($_POST["kit_id"]));
+        $kitInfo->setBatch_number(urldecode($_POST["batch_number"]));
+        $kitInfo->setManufacturerName(urldecode($_POST["manufacturer"]));
+        $kitInfo->setManufacture_place(urldecode($_POST["manufacture_place"]));
+        $kitInfo->setManufacture_date(urldecode($_POST["manufacture_date"]));
+        $kitInfo->setExp_date(urldecode($_POST["expiration_date"]));
+        $kitInfo->setProgramCode(urldecode($_POST["program"]));
         $kitInfo->setPrescriptionString(urldecode($_POST["prescription"]));
         $kitInfo->setParticipantRef(urldecode($_POST["participant"]));
         $subscriptionId = urldecode($_POST["subscription"]);

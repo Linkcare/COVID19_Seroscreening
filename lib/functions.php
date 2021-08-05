@@ -923,6 +923,10 @@ function createKitInfoTask($admissionId, $kitInfo) {
             $q->setValue($kitInfo->getId());
             $arrQuestions[] = $q;
         }
+        if ($q = $targetForm->findQuestion($GLOBALS["KIT_INFO_Q_ID"]["MANUFACTURER_NAME"])) {
+            $q->setValue($kitInfo->getManufacturerName());
+            $arrQuestions[] = $q;
+        }
         if ($q = $targetForm->findQuestion($GLOBALS["KIT_INFO_Q_ID"]["MANUFACTURE_PLACE"])) {
             $q->setValue($kitInfo->getManufacture_place());
             $arrQuestions[] = $q;

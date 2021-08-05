@@ -11,13 +11,14 @@ if ($_POST['action'] == 'load') {
         return;
     }
 
+    $arrVariables[':manufacturer'] = mb_strtoupper($_POST['manufacturer']);
     $arrVariables[':manufacturePlace'] = $_POST['manufacture_place'];
     $arrVariables[':manufactureDate'] = $_POST['manufacture_date'];
     $arrVariables[':expirationDate'] = $_POST['expiration_date'];
     $arrVariables[':batchNumber'] = $_POST['batch_number'];
     $arrVariables[':instanceId'] = $_POST['instance_id'];
     $arrVariables[':programCode'] = $_POST['program_code'];
-    $sql = 'INSERT INTO KIT_INFO (KIT_ID, MANUFACTURE_PLACE, MANUFACTURE_DATE, EXPIRATION, BATCH_NUMBER, STATUS, ID_INSTANCE, PROGRAM_CODE) VALUES(:kitId, :manufacturePlace, :manufactureDate, :expirationDate, :batchNumber, NULL, :instanceId, :programCode)';
+    $sql = 'INSERT INTO KIT_INFO (KIT_ID, MANUFACTURER_NAME, MANUFACTURE_PLACE, MANUFACTURE_DATE, EXPIRATION, BATCH_NUMBER, STATUS, ID_INSTANCE, PROGRAM_CODE) VALUES(:kitId, :manufacturer, :manufacturePlace, :manufactureDate, :expirationDate, :batchNumber, NULL, :instanceId, :programCode)';
 
     $errorList = null;
     $ok = 0;
@@ -92,6 +93,8 @@ if ($_POST['action'] == 'load') {
 <div class="container col-lg-12 col-md-12">
     <form id='uploadForm' method="post" enctype="multipart/form-data">
         <input type='hidden' name='action' value="load">
+        <label for="manufacturer">Manufacturer name (e.g. Wondfo):</label>
+        <input type='text' id='manufacturer' name='manufacturer' style="background-color: lightyellow;" value=""><br>
         <label for="manufacture_place">Manufacture place:</label>
         <input type='text' id='manufacture_place' name='manufacture_place' style="background-color: lightyellow;" value="Nantong - RP China"><br>
         <label for="manufacture_date">Manufacture date (yyyy-mm-dd):</label>

@@ -19,6 +19,7 @@ class KitInfo {
 
     /* Private members */
     private $id;
+    private $manufacturerName;
     private $manufacture_place;
     private $manufacture_date;
     private $batch_number;
@@ -43,6 +44,7 @@ class KitInfo {
 
             $sql = "SELECT
                     ki.KIT_ID,
+                    ki.MANUFACTURER_NAME,
                     ki.MANUFACTURE_PLACE,
                     ki.MANUFACTURE_DATE,
                     ki.EXPIRATION,
@@ -60,6 +62,7 @@ class KitInfo {
             if ($result->Next()) {
                 $kit = new KitInfo();
                 $kit->setId($result->GetField('KIT_ID'));
+                $kit->setManufacturerName($result->GetField('MANUFACTURER_NAME'));
                 $kit->setManufacture_place($result->GetField('MANUFACTURE_PLACE'));
                 $kit->setManufacture_date(substr($result->GetField('MANUFACTURE_DATE'), 0, 16));
                 $kit->setBatch_number($result->GetField('BATCH_NUMBER'));
@@ -80,6 +83,14 @@ class KitInfo {
      */
     public function getId() {
         return $this->id;
+    }
+
+    /**
+     *
+     * @return string
+     */
+    public function getManufacturerName() {
+        return $this->manufacturerName;
     }
 
     /**
@@ -165,6 +176,14 @@ class KitInfo {
      */
     public function setId($id) {
         $this->id = $id;
+    }
+
+    /**
+     *
+     * @param string $manufacturerName
+     */
+    public function setManufacturerName($manufacturerName) {
+        $this->manufacturerName = $manufacturerName;
     }
 
     /**
@@ -255,12 +274,13 @@ class KitInfo {
         switch ($this->getStatus()) {
             case KitInfo::STATUS_NOT_USED :
                 $urlStart .= 'service_name=seroscreening';
-                $urlStart .= '&kit_id=' . $this->getId();
-                $urlStart .= '&manufacture_date=' . $this->getManufacture_date();
-                $urlStart .= '&manufacture_place=' . $this->getManufacture_place();
-                $urlStart .= '&expiration_date=' . $this->getExp_date();
-                $urlStart .= '&batch_number=' . $this->getBatch_number();
-                $urlStart .= '&program=' . $this->getProgramCode();
+                $urlStart .= '&kit_id=' . urlencode($this->getId());
+                $urlStart .= '&manufacturer=' . urlencode($this->getManufacturerName());
+                $urlStart .= '&manufacture_date=' . urlencode($this->getManufacture_date());
+                $urlStart .= '&manufacture_place=' . urlencode($this->getManufacture_place());
+                $urlStart .= '&expiration_date=' . urlencode($this->getExp_date());
+                $urlStart .= '&batch_number=' . urlencode($this->getBatch_number());
+                $urlStart .= '&program=' . urlencode($this->getProgramCode());
                 break;
             default :
                 $urlStart .= 'kit_id=' . $this->getId();
@@ -310,6 +330,7 @@ class KitInfo {
     public function toJson() {
         $obj = new StdClass();
         $obj->KIT_ID = $this->getId();
+        $obj->MANUFACTURER = $this->getManufacturerName();
         $obj->MANUFACTURER_PLACE = $this->getManufacture_place();
         $obj->MANUFACTURER_DATE = $this->getManufacture_date();
         $obj->EXPIRATION_DATE = $this->getExp_date();
