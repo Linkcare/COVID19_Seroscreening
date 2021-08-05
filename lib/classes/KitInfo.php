@@ -303,6 +303,21 @@ class KitInfo {
     }
 
     /**
+     * Returns a string with the information of the kit represented in JSON format
+     *
+     * @return StdClass
+     */
+    public function toJson() {
+        $obj = new StdClass();
+        $obj->KIT_ID = $this->getId();
+        $obj->MANUFACTURER_PLACE = $this->getManufacture_place();
+        $obj->MANUFACTURER_DATE = $this->getManufacture_date();
+        $obj->EXPIRATION_DATE = $this->getExp_date();
+        $obj->BATCH_NUMBER = $this->getBatch_number();
+        return $obj;
+    }
+
+    /**
      * Generates an entry in the table KIT_TRACKING to know who is creating Admissions in Linkcare with a KIT_ID
      *
      * @param string $prescriptionString

@@ -55,6 +55,55 @@ function service_dispatch_kit($token = null, $kitInfo, $subscriptionId = null) {
 
 /**
  *
+ * @param string $sharedKeyStr
+ * @param KitInfo $kitInfo
+ * @return string[]
+ */
+function generateSignUpUrl($sharedKeyStr, $kitInfo) {
+    $session = null;
+    $errorStr = null;
+    $url = null;
+    try {
+        LinkcareSoapAPI::setEndpoint($GLOBALS["WS_LINK"]);
+        LinkcareSoapAPI::session_init($GLOBALS['SERVICE_USER'], $GLOBALS['SERVICE_PASSWORD'], 0, true);
+        $team = $GLOBALS['SERVICE_TEAM'];
+        $role = 47;
+        $session = LinkcareSoapAPI::getInstance()->getSession();
+        // Ensure to set the correct active ROLE and TEAM
+        if ($team && $team != $session->getTeamCode() && $team != $session->getTeamId()) {
+            LinkcareSoapAPI::getInstance()->session_set_team($team);
+        }
+        if ($role && $session->getRoleId() != $role) {
+            LinkcareSoapAPI::getInstance()->session_role($role);
+        }
+    } catch (APIException $e) {
+        $errorStr = 'Service user cannot connect to API. Contact a system administrator to solve the problem';
+    } catch (Exception $e) {
+        $errorStr = 'Service user cannot connect to API. Contact a system administrator to solve the problem';
+    }
+
+    if (!$errorStr) {
+        $api = LinkcareSoapAPI::getInstance();
+        try {
+            $extendedSharedKey = $api->shared_key_extend($sharedKeyStr, $kitInfo->toJson());
+            $url = $kitInfo->getInstance_url();
+            $matches = null;
+            if (preg_match('~^(http[s]?://[^/]+)~', $url, $matches)) {
+                $url = $matches[1];
+                $url .= '/sign_up?shared_key=' . urlencode($extendedSharedKey);
+            }
+        } catch (APIException $e) {
+            $errorStr = $e->getMessage();
+        } catch (Exception $e) {
+            $errorStr = $e->getMessage();
+        }
+    }
+
+    return ['url' => $url, 'error' => $errorStr];
+}
+
+/**
+ *
  * @param KitInfo $kitInfo
  * @throws Exception
  * @return LC2Action

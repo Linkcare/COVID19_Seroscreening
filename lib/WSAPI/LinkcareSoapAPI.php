@@ -153,6 +153,22 @@ class LinkcareSoapAPI {
     }
 
     /**
+     * Sets the active ROLE for the session
+     *
+     * @param string $shared_key
+     * @param StdClass $data
+     */
+    public function shared_key_extend($shared_key, $data) {
+        $extendedSharedKey = null;
+        $params = ["shared_key" => $shared_key, 'data' => json_encode($data)];
+        $resp = $this->invoke('shared_key_extend', $params);
+        if (!$resp->getErrorCode()) {
+            $extendedSharedKey = $resp->getResult();
+        }
+        return $extendedSharedKey;
+    }
+
+    /**
      * Get information about a PROGRAM
      *
      * @param string $programId
