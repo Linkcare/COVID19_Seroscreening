@@ -13,7 +13,7 @@
         echo $GLOBALS['URL_START_AUTOADMINISTERED'];
         ?>" role="button" style="margin-top: 30px; padding: 22px;"><?php
 
-        echo (Localization::translate('Autoadmin.Button.Register'));
+        echo ($GLOBALS['BUTTON_AUTOADMINISTERED']);
         ?></a>
     </div>
 </div>
@@ -28,7 +28,8 @@
       	</button>
         <div class="embed-responsive embed-responsive-16by9" style="position:relative; padding:0px;">
   			<video class="embed-responsive-item modal-video" controls="true">
-  				<source src="https://www.linkcare.es/wp-content/uploads/2021/08/Wondfo-video-EN.mp4" type="video/mp4">
+  				<source src="<?php
+    echo $GLOBALS['VIDEO_TUTORIAL_WONDFO']?>" type="video/mp4">
             </video>
         </div>
       </div>

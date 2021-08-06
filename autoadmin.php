@@ -58,6 +58,7 @@ if ($dbConnResult !== true) {
                 $kit->setStatus(KitInfo::STATUS_NOT_USED);
             /* If the status is empty, the kit is valid as if its status is equal to NOT_USED */
             case KitInfo::STATUS_NOT_USED :
+                $GLOBALS['BUTTON_AUTOADMINISTERED'] = Localization::translate('Autoadmin.Button.Register');
                 if (strtotime($kit->getExp_date()) - strtotime($kit->getManufacture_date()) < 0) {
                     /* The kit is not valid, athough it's not used, it has expired */
                     $kit->changeStatus(KitInfo::STATUS_EXPIRED);
@@ -71,13 +72,28 @@ if ($dbConnResult !== true) {
                     }
                 }
                 break;
-            case KitInfo::STATUS_EXPIRED :
-            case KitInfo::STATUS_DISCARDED :
-            case KitInfo::STATUS_ASSIGNED :
             case KitInfo::STATUS_PROCESSING :
             case KitInfo::STATUS_PROCESSING_5MIN :
             case KitInfo::STATUS_INSERT_RESULTS :
+                $GLOBALS['BUTTON_AUTOADMINISTERED'] = Localization::translate('Autoadmin.Button.EnterResults');
+                $url = $kit->getInstance_url();
+                $matches = null;
+                if (preg_match('~^(http[s]?://[^/]+)~', $url, $matches)) {
+                    $signUpUrl = $matches[1];
+                    $signUpUrl .= '/sign_in';
+                }
+                break;
+            case KitInfo::STATUS_ASSIGNED :
             case KitInfo::STATUS_USED :
+            case KitInfo::STATUS_EXPIRED :
+            case KitInfo::STATUS_DISCARDED :
+                $GLOBALS['BUTTON_AUTOADMINISTERED'] = Localization::translate('Autoadmin.Button.ViewResults');
+                $url = $kit->getInstance_url();
+                $matches = null;
+                if (preg_match('~^(http[s]?://[^/]+)~', $url, $matches)) {
+                    $signUpUrl = $matches[1];
+                    $signUpUrl .= '/sign_in';
+                }
                 break;
             default:
                 /* The kit contains an invalid status value */

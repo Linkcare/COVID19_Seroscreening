@@ -84,10 +84,12 @@ $GLOBALS["SCAN_KIT_LINK_Q_ID"]["KIT_ID"] = 1;
 $GLOBALS["KIT_TRACKING"] = true;
 $GLOBALS["DEBUG_MODE"] = false;
 
+// Video tutorials for autoadmin page
+$GLOBALS['VIDEO_TUTORIAL_WONDFO'] = 'https://www.linkcare.es/wp-content/uploads/2021/08/Wondfo-video-EN.mp4';
+
 // Load particular configuration
 if (file_exists(__DIR__ . '/../conf/configuration.php')) {
     include_once __DIR__ . '/../conf/configuration.php';
 }
 
 date_default_timezone_set($GLOBALS["DEFAULT_TIMEZONE"]);
-
