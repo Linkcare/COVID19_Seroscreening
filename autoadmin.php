@@ -1,6 +1,6 @@
 <?php
 require_once 'lib/default_conf.php';
-
+const AUTOADMIN_APP_CAIXABANK = "KX";
 /*
  * Web page for autoadministered kits. The URL must include the following parameters:
  * - id: Kit ID of the COVID test device
@@ -116,7 +116,12 @@ if ($dbConnResult !== true) {
     if ($signUpUrl) {
         include "views/Header.html.php";
         $GLOBALS['URL_START_AUTOADMINISTERED'] = $signUpUrl;
-        include "views/caixabank_autoadmin.html.php";
+        switch ($app) {
+            case AUTOADMIN_APP_CAIXABANK :
+                include "views/caixabank_autoadmin.html.php";
+            default :
+                include "views/generic_autoadmin.html.php";
+        }
     }
 }
 
