@@ -119,8 +119,10 @@ if ($dbConnResult !== true) {
         switch ($app) {
             case AUTOADMIN_APP_CAIXABANK :
                 include "views/caixabank_autoadmin.html.php";
+                break;
             default :
                 include "views/generic_autoadmin.html.php";
+                break;
         }
     }
 }
