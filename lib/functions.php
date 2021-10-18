@@ -627,7 +627,7 @@ function findSubscription($prescription, $defaultProgramCode = null) {
         $programCode = $GLOBALS["PROGRAM_CODE"];
     }
 
-    $filter = ["member_role" => 24, "member_team" => $api->getSession()->getTeamId(), "program" => $$programId];
+    $filter = ["member_role" => 24, "member_team" => $api->getSession()->getTeamId(), "program" => $programId];
     $subscriptions = $api->subscription_list($filter);
     foreach ($subscriptions as $s) {
         $t = $s->getTeam();
