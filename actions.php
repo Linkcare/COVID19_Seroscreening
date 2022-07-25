@@ -32,6 +32,13 @@ if ($_GET['action'] == 'check_test_results') {
             storeGatekeeperTracking($res, json_encode($_GET));
         }
     } catch (Exception $e) {}
+} else if ($_GET['action'] == 'store_geolocation') {
+    $latitude = $_GET['latitude'];
+    $longitude = $_GET['longitude'];
+    $id = $_GET['id'];
+
+    header('Content-Type: application/text');
+    echo 'ACTION store_geolocation: Success';
 } else {
     // LC2 actions
     if (isset($_SESSION["KIT"])) {
