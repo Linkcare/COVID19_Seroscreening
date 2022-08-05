@@ -23,7 +23,9 @@ switch (Localization::getLang()) {
 ?>
 
     <div class="container col-lg-4 col-md-8 j_warning" style="display: none;">
-    	<p>It is mandatory to provide your location in order to continue with the verification.</p>
+    	<p><?php
+    echo (Localization::translate('Verification.Alert'));
+    ?></p>
     </div>
 	<div class="container col-lg-4 col-md-8 j_body" style="display: none;">
 		
@@ -85,7 +87,10 @@ switch (Localization::getLang()) {
               		if (navigator.geolocation) {
                     	navigator.geolocation.getCurrentPosition(showPosition, denied);
                   	} else { 
-                  		$('.j_warning p').html("Geolocation is not supported by this browser, please try with a different one.");
+                  		$('.j_warning p').html("<?php
+
+        echo (Localization::translate('Verification.Error'));
+        ?>");
                     }
                 }
         
@@ -94,7 +99,7 @@ switch (Localization::getLang()) {
                 			'actions.php',
                             {action: 'store_geolocation', latitude: position.coords.latitude, longitude: position.coords.longitude, id: <?php
 
-echo $_GET['id'];
+        echo $_GET['id'];
         ?>},
                             function(ret){
                                 	console.log(ret);
