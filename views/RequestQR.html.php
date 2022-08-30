@@ -7,7 +7,7 @@
         	</p>
         </div>
         <div style="text-align: center;">
-        	<img src="img/test_qr_example.jpg">
+        	<img src="img/test_qr_example.png">
         </div>
         <form>
             <div class="form-group" style="margin-top: 20px;">
@@ -22,6 +22,7 @@
         </form>
     </div>
 	<script>
+		$("#qr_id").focus();
 		$('#btnRequestQR').click(function(){
 			var id_regexp = new RegExp('^[a-zA-Z0-9_-]{5}$');
 			var qr_id = $('input#qr_id').val();
