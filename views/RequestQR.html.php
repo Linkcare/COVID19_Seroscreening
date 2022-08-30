@@ -23,11 +23,12 @@
     </div>
 	<script>
 		$("#qr_id").focus();
-		$('#btnRequestQR').click(function(){
+		$('#btnRequestQR').on('submit click',function(e){
+			e.preventDefault();
 			var id_regexp = new RegExp('^[a-zA-Z0-9_-]{5}$');
 			var qr_id = $('input#qr_id').val();
 			if(id_regexp.test(qr_id)){
-				window.location.href = '?id=' + qr_id;
+				window.location.href = $(location).attr("origin") + '?id=' + qr_id;
 			}
 		});
 
