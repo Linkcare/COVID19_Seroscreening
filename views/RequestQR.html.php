@@ -20,10 +20,13 @@
                 </button>   
             </div>
         </form>
+        
+        <!-- Linkcare Bio logo link -->
+        
         <div style="text-align: center; display: flex; flex-flow: column; height: 140px;">
     		<div style="flex: 1;"></div>
         	<div>
-            	<a href="https://www.linkcare.es<?php
+            	<a href="https://linkcare.es<?php
             $locale = Localization::getLang();
             if (in_array($locale, ['en', 'es', 'ca'])) {
                 echo "?lang=" . $locale;

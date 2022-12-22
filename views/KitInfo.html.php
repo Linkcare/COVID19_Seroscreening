@@ -109,30 +109,33 @@ if ($kit->getStatus() == KitInfo::STATUS_NOT_USED) {
         }
         ?>
         
-            <button class="btn btn-primary text-center btn-block btn-lg" onclick="window.location.href='<?php
+        <button class="btn btn-primary text-center btn-block btn-lg" onclick="window.location.href='<?php
 
-            echo ($GLOBALS['CLOSE_URL']);
-            ?>';"><?php
+        echo ($GLOBALS['CLOSE_URL']);
+        ?>';"><?php
 
-            echo (Localization::translate('KitInfo.Button.Close'));
-            ?>	
-            </button>
+        echo (Localization::translate('KitInfo.Button.Close'));
+        ?>	
+        </button>
             
-            <div style="text-align: center; display: flex; flex-flow: column; height: 250px;">
-        		<div style="flex: 1;"></div>
-            	<div>
-                	<a href="https://www.linkcare.es<?php
-                $locale = Localization::getLang();
-                if (in_array($locale, ['en', 'es', 'ca'])) {
-                    echo "?lang=" . $locale;
-                } else {
-                    echo "?lang=en";
-                }
-                ?>"><img src="img/linkcarebio.jpg" alt="Linkcare" width=150></a>
-            	</div>
-            	<div style="flex: 1;"></div>
-            </div>
-        
+            
+        <!-- Linkcare Bio logo link -->
+
+        <div style="text-align: center; display: flex; flex-flow: column; height: 250px;">
+    		<div style="flex: 1;"></div>
+        	<div>
+            	<a href="https://www.linkcare.es<?php
+            $locale = Localization::getLang();
+            if (in_array($locale, ['en', 'es', 'ca'])) {
+                echo "?lang=" . $locale;
+            } else {
+                echo "?lang=en";
+            }
+            ?>"><img src="img/linkcarebio.jpg" alt="Linkcare" width=150></a>
+        	</div>
+        	<div style="flex: 1;"></div>
+        </div>
+    
         <?php
         // The discard button will be hidden at the moment, the correct if would be the following:
         // if ($kit->getStatus() == KitInfo::STATUS_NOT_USED || $kit->getStatus() == KitInfo::STATUS_ASSIGNED) {

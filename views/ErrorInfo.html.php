@@ -26,6 +26,9 @@ $errorInfo = $GLOBALS["VIEW_MODEL"];
         	</p>
         	
         </div>
+        
+        <!-- Linkcare Bio logo link -->
+
         <div style="text-align: center; display: flex; flex-flow: column; height: 80vh;">
     		<div style="flex: 1;"></div>
         	<div>
