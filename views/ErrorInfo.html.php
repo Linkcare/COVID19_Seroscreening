@@ -29,7 +29,7 @@ $errorInfo = $GLOBALS["VIEW_MODEL"];
         <div style="text-align: center; display: flex; flex-flow: column; height: 80vh;">
     		<div style="flex: 1;"></div>
         	<div>
-            	<a href="https://linkcare.es<?php
+            	<a href="https://www.linkcare.es<?php
             $locale = Localization::getLang();
             if (in_array($locale, ['en', 'es', 'ca'])) {
                 echo "?lang=" . $locale;
