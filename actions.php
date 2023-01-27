@@ -58,7 +58,9 @@ if ($_GET['action'] == 'check_test_results') {
                     }
                     if ($kit->getPrescriptionString() == '') {
                         // Show the next view asking for the prescription information
-                        echo 'prescription.php?culture=' . $language;
+                        $callbackUri = HttpHelper::urlAddParam(HttpHelper::requestUrlPath(), 'action', 'lc2_auth');
+                        echo $kit->authorizationUrl($callbackUri);
+                        // echo 'prescription.php?culture=' . $language;
                     } else {
                         // We already know the PRESCRIPTION information. There is no need to ask for it.
                         echo $kit->generateURLtoLC2() . "&prescription=" . urlencode($kit->getPrescriptionString());
@@ -94,6 +96,17 @@ if ($_GET['action'] == 'check_test_results') {
                 $prescription = new Prescription($_GET["prescription"], $_GET["participant"]);
                 header('Content-Type: application/json');
                 echo $prescription->toJSON();
+                break;
+            case 'lc2_auth' :
+                // The user has logged in LC2 and we are receiving the authorization
+                if ($_GET['mode'] == 'pro') {
+                    // In professional mode, go to the "Prescription" view to allow scanning a prescription
+                    header('Location: prescription.php?culture=' . $language);
+                } else {
+                    // In user mode, create redirect to LC2 to create automatically an Admission
+                    $targetUrl = $kit->generateURLtoLC2();
+                    header('Location: ' . $targetUrl);
+                }
                 break;
         }
     }

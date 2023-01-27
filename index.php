@@ -26,7 +26,7 @@ if ($dbConnResult !== true) {
              * If an specific admission Id, has been provided, then the KIT must be associated to that ADMISSION. Generate a PRESCRIPTION with the
              * ADMISSION ID
              */
-            $kit->setPrescriptionString(urlencode('adm=' . trim($_GET['adm'])));
+            $kit->setPrescriptionString('adm=' . trim($_GET['adm']));
         }
 
         /* Store a tracking of all kits scanned */

@@ -26,6 +26,7 @@ class KitInfo {
     private $exp_date;
     private $status;
     private $programCode;
+    private $teamCode;
     private $instance_url;
     private $prescriptionString;
     private $participantRef;
@@ -51,6 +52,7 @@ class KitInfo {
                     ki.BATCH_NUMBER,
                     ki.STATUS,
                     ki.PROGRAM_CODE,
+                    ki.TEAM_CODE,
                     li.URL
                 FROM
                     KIT_INFO ki
@@ -69,6 +71,7 @@ class KitInfo {
                 $kit->setExp_date(substr($result->GetField('EXPIRATION'), 0, 10));
                 $kit->setStatus($result->GetField("STATUS"));
                 $kit->setProgramCode($result->GetField("PROGRAM_CODE"));
+                $kit->setTeamCode($result->GetField("TEAM_CODE"));
                 $kit->setInstance_url($result->GetField('URL'));
             }
         }
@@ -142,6 +145,14 @@ class KitInfo {
      */
     public function getProgramCode() {
         return $this->programCode;
+    }
+
+    /**
+     *
+     * @return string
+     */
+    public function getTeamCode() {
+        return $this->teamCode;
     }
 
     /**
@@ -236,6 +247,14 @@ class KitInfo {
 
     /**
      *
+     * @param string $teamCode
+     */
+    public function setTeamCode($teamCode) {
+        $this->teamCode = $teamCode;
+    }
+
+    /**
+     *
      * @param string $instance_url
      */
     public function setInstance_url($instance_url) {
@@ -264,30 +283,44 @@ class KitInfo {
      * Function to compose the URL that will be the instance URL of the kit used at the PROCEED button
      */
     public function generateURLtoLC2() {
-        $urlStart = '';
-        if (strpos($this->instance_url, '?') === false) {
-            $urlStart = $this->instance_url . '?';
-        } else {
-            $urlStart = $this->instance_url . '&';
-        }
-
+        $urlBase = $this->instance_url;
         switch ($this->getStatus()) {
             case KitInfo::STATUS_NOT_USED :
-                $urlStart .= 'service_name=seroscreening';
-                $urlStart .= '&kit_id=' . urlencode($this->getId());
-                $urlStart .= '&manufacturer=' . urlencode($this->getManufacturerName());
-                $urlStart .= '&manufacture_date=' . urlencode($this->getManufacture_date());
-                $urlStart .= '&manufacture_place=' . urlencode($this->getManufacture_place());
-                $urlStart .= '&expiration_date=' . urlencode($this->getExp_date());
-                $urlStart .= '&batch_number=' . urlencode($this->getBatch_number());
-                $urlStart .= '&program=' . urlencode($this->getProgramCode());
+                $urlBase = HttpHelper::urlAddParam($urlBase, 'service_name', 'seroscreening');
+                $urlBase = HttpHelper::urlAddParam($urlBase, 'kit_id', $this->getId());
+                $urlBase = HttpHelper::urlAddParam($urlBase, 'manufacturer', $this->getManufacturerName());
+                $urlBase = HttpHelper::urlAddParam($urlBase, 'manufacture_date', $this->getManufacture_date());
+                $urlBase = HttpHelper::urlAddParam($urlBase, 'manufacture_place', $this->getManufacture_place());
+                $urlBase = HttpHelper::urlAddParam($urlBase, 'expiration_date', $this->getExp_date());
+                $urlBase = HttpHelper::urlAddParam($urlBase, 'batch_number', $this->getBatch_number());
+                $urlBase = HttpHelper::urlAddParam($urlBase, 'program', $this->getProgramCode());
+                $urlBase = HttpHelper::urlAddParam($urlBase, 'team', $this->getTeamCode());
                 break;
             default :
-                $urlStart .= 'kit_id=' . $this->getId();
+                $urlBase = HttpHelper::urlAddParam($urlBase, 'kit_id', $this->getId());
                 break;
         }
 
-        return $urlStart;
+        return $urlBase;
+    }
+
+    /**
+     * Generates an URL to invoke the authorization service of LC2.
+     * After authorization, LC2 will redirect to the url indicated in $callbackUri adding some extra parameters informing about the result of the
+     * authorization
+     *
+     * @param string $callbackUri
+     * @return string
+     */
+    public function authorizationUrl($callbackUri) {
+        $lc2Url = HttpHelper::urlBase($this->instance_url);
+        $lc2AuthUrl = HttpHelper::composeUrl($lc2Url, 'authorize');
+
+        $callbackUri = HttpHelper::urlAddParam($callbackUri, 'kit_id', $this->getId());
+
+        $lc2AuthUrl = HttpHelper::urlAddParam($lc2AuthUrl, 'redirect_uri', $callbackUri);
+
+        return $lc2AuthUrl;
     }
 
     /**

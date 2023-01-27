@@ -17,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $kitInfo->setManufacture_date(urldecode($_POST["manufacture_date"]));
         $kitInfo->setExp_date(urldecode($_POST["expiration_date"]));
         $kitInfo->setProgramCode(urldecode($_POST["program"]));
+        $kitInfo->setTeamCode(urldecode($_POST["team"]));
         $kitInfo->setPrescriptionString(urldecode($_POST["prescription"]));
         $kitInfo->setParticipantRef(urldecode($_POST["participant"]));
         $subscriptionId = urldecode($_POST["subscription"]);

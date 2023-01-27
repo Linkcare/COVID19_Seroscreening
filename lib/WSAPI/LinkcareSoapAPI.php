@@ -214,7 +214,7 @@ class LinkcareSoapAPI {
      * @param string $subscriptionId
      * @return APISubscription
      */
-    public function subscription_get($program, $team, $subscriptionId) {
+    public function subscription_get($program, $team, $subscriptionId = null) {
         $subscription = null;
         $params = ["program" => $program, 'team' => $team, 'subscription' => $subscriptionId];
         $resp = $this->invoke("subscription_get", $params);

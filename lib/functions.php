@@ -133,6 +133,23 @@ function processKit($kitInfo, $subscriptionId = null) {
         $caseByDevice = $casesByDevice[0];
     }
 
+    if ($api->getSession()->getRoleId() == 39) {
+        $existingCaseId = $api->getSession()->getCaseId();
+        /*
+         * We are in 'patient' mode and the KIT_ID is associated to a CASE.
+         * In this case the active session user must be the same CASE found
+         */
+        if ($caseByDevice) {
+            if ($api->getSession()->getCaseId() != $caseByDevice->getId()) {
+                // ERROR! The kit is not assigned to the active session user
+                $lc2Action = new LC2Action(LC2Action::ACTION_ERROR_MSG);
+                $error = new ErrorInfo(ErrorInfo::KIT_ALREADY_USED);
+                $lc2Action->setErrorMessage($error->getErrorMessage());
+                return $lc2Action;
+            }
+        }
+    }
+
     /*
      * The prescription information generally is provided only when creating a new ADMISSION.
      * If it is not provided, it means that we are looking for an existing ADMISSION than can be found using the KIT_ID
@@ -152,32 +169,20 @@ function processKit($kitInfo, $subscriptionId = null) {
 
     // Find the target SUBSCRIPTION (only if we don't know the ADMISSION
     if (!$prescription || !$prescription->getAdmissionId()) {
-        if ($api->getSession()->getRoleId() == 39 && $caseByDevice) {
-            /*
-             * We are in 'patient' mode and the KIT_ID is associated to a CASE.
-             * In this case the active session user must be the same CASE found
-             */
-            if ($api->getSession()->getCaseId() != $caseByDevice->getId()) {
-                // ERROR! The kit is not assigned to the active session user
-                $lc2Action = new LC2Action(LC2Action::KIT_ALREADY_USED);
-                return $lc2Action;
-            }
+        // We are in professional mode
+        if ($subscriptionId) {
+            // An specific SUBSCRIPTION ID has been provided
+            $subscription = $api->subscription_get(null, null, $subscriptionId);
         } else {
-            // We are in professional mode
-            if ($subscriptionId) {
-                // An specific SUBSCRIPTION ID has been provided
-                $subscription = $api->subscription_get(null, null, $subscriptionId);
-            } else {
-                $subscriptions = findSubscription($prescription, $kitInfo->getProgramCode());
-                /* @var APISubscription $subscription */
-                $subscription = empty($subscriptions) ? null : reset($subscriptions);
-                if (count($subscriptions) > 1) {
-                    // The user must select a SUBSCRIPTION
-                    $lc2Action = new LC2Action(LC2Action::ACTION_SERVICE_REQUEST);
-                    $lc2Action->setProgramId($subscription->getProgram()->getId());
-                    $lc2Action->setRequestType(LC2Action::REQUEST_SUBSCRIPTION);
-                    return $lc2Action;
-                }
+            $subscriptions = findSubscription($prescription, $kitInfo->getProgramCode(), $kitInfo->getTeamCode());
+            /* @var APISubscription $subscription */
+            $subscription = empty($subscriptions) ? null : reset($subscriptions);
+            if (count($subscriptions) > 1) {
+                // The user must select a SUBSCRIPTION
+                $lc2Action = new LC2Action(LC2Action::ACTION_SERVICE_REQUEST);
+                $lc2Action->setProgramId($subscription->getProgram()->getId());
+                $lc2Action->setRequestType(LC2Action::REQUEST_SUBSCRIPTION);
+                return $lc2Action;
             }
         }
     }
@@ -247,7 +252,7 @@ function processKit($kitInfo, $subscriptionId = null) {
     // Check point passed. initialize or update the ADMISSION
     if (!$alreadyInitialized) {
         /*
-         * We neet to initialize an ADMISSION. There are 2 situations:
+         * We need to initialize an ADMISSION. There are 2 situations:
          * - It is necessary to create a new ADMISSION. This situation happens when a PROFESSIONAL starts the process (and we know both the
          * information about the KIT and the PARTICIPANT
          * - There exists an ADMISSION for the prescption provided, but it has not been initialized yet with the KIT information. This situation
@@ -587,18 +592,28 @@ function loadAdmissionFromPrescription($subscription, $kitInfo, $prescription, $
 }
 
 /**
- * Searches the appropriate subscription of the active user.
- * To search the subscription it is necessary to know the PROGRAM CODE, which is obtained from:
- * - The Prescription contains a PROGRAM_CODE (if not NULL)
- * - Otherwise the default PROGRAM CODE provided in $defaultProgramCode (if not null)
- * - Otherwise the PROGRAM CODE defined in the global variable $GLOBALS["PROGRAM_CODE"]
+ * Searches the SUBSCRIPTIONS to a PROGRAM that will be used to generate an ADMISSION.
+ * To search the subscription it is necessary to know the PROGRAM CODE and a TEAM_CODE.<br>
+ * The PROGRAM_CODE is calculated as follows:
+ * <ul>
+ * <li>The Prescription contains a PROGRAM_CODE (if not NULL)</li>
+ * <li>Otherwise the default PROGRAM CODE provided in $defaultProgramCode (if not null)</li>
+ * <li>Otherwise the PROGRAM CODE defined in the global variable $GLOBALS["PROGRAM_CODE"]</li>
+ * </ul>
+ * The TEAM_CODE is calculated as follows:
+ * <ul>
+ * <li>The Prescription contains a TEAM_CODE (if not NULL)</li>
+ * <li>Otherwise the default TEAM CODE provided in $defaultTeamCode (if not null)</li>
+ * <li>Otherwise all the TEAMS that have a SUBSCRIPTION for the PROGRAM CODE will be considered</li>
+ * </ul>
  *
  * @param Prescription $prescription
  * @param string $defaultProgramCode
+ * @param string $defaultTeamCode
  * @throws APIException
- * @return APISubscription
+ * @return APISubscription[]
  */
-function findSubscription($prescription, $defaultProgramCode = null) {
+function findSubscription($prescription, $defaultProgramCode = null, $defaultTeamCode = null) {
     $api = LinkcareSoapAPI::getInstance();
     $found = [];
     $teamId = null;
@@ -607,13 +622,15 @@ function findSubscription($prescription, $defaultProgramCode = null) {
 
     if ($prescription && $prescription->getTeam()) {
         $team = $api->team_get($prescription->getTeam());
-        $teamId = $team->getId();
+        $teamId = $team ? $team->getId() : null;
+    } elseif ($api->getSession()->getRoleId() != 39) {
+        $teamId = $api->getSession()->getTeamId();
+    } elseif ($defaultTeamCode) {
+        $teamCode = $defaultTeamCode;
     }
 
-    // if ($api->getSession()->getTeamId() != $teamId) {
-    // $api->session_set_team($teamId);
-    // }
-    if ($api->getSession()->getRoleId() != 24) {
+    if ($api->getSession()->getRoleId() != 24 && $api->getSession()->getRoleId() != 39) {
+        // The active user is a professional. The active role to create admissions must be CASE MANAGER
         $api->session_role(24);
     }
 
@@ -627,17 +644,24 @@ function findSubscription($prescription, $defaultProgramCode = null) {
         $programCode = $GLOBALS["PROGRAM_CODE"];
     }
 
-    $filter = ["member_role" => 24, "member_team" => $api->getSession()->getTeamId(), "program" => $programId];
-    $subscriptions = $api->subscription_list($filter);
-    foreach ($subscriptions as $s) {
-        $t = $s->getTeam();
-        if ($t && $teamId && $t->getId() != $teamId) {
-            // The owner of the SUBSCRIPTION is not the expected one
-            continue;
+    if ($programCode && $teamCode) {
+        $subscription = $api->subscription_get($programCode, $teamCode);
+        if ($subscription) {
+            $found[] = $subscription;
         }
-        $p = $s->getProgram();
-        if ($p && $p->getCode() == $programCode) {
-            $found[] = $s;
+    } else {
+        $filter = ["member_role" => 24, "member_team" => $teamId, "program" => $programId];
+        $subscriptions = $api->subscription_list($filter);
+        foreach ($subscriptions as $s) {
+            $t = $s->getTeam();
+            if ($t && $teamId && $t->getId() != $teamId) {
+                // The owner of the SUBSCRIPTION is not the expected one
+                continue;
+            }
+            $p = $s->getProgram();
+            if ($p && $p->getCode() == $programCode) {
+                $found[] = $s;
+            }
         }
     }
 
@@ -917,6 +941,15 @@ function createKitInfoTask($admissionId, $kitInfo) {
         }
     }
 
+    $task->clearAssignments();
+    $a = new APITaskAssignment(APITaskAssignment::SERVICE, null, null);
+    $task->addAssignments($a);
+    try {
+        $api->task_set($task);
+    } catch (Exception $e) {
+        // Ignore error
+    }
+
     $arrQuestions = [];
     if ($targetForm) {
         if ($q = $targetForm->findQuestion($GLOBALS["KIT_INFO_Q_ID"]["KIT_ID"])) {
@@ -952,15 +985,6 @@ function createKitInfoTask($admissionId, $kitInfo) {
         $api->form_set_all_answers($targetForm->getId(), $arrQuestions, true);
     } else {
         throw new APIException("FORM NOT FOUND", "KIT INFO FORM NOT FOUND: (" . $GLOBALS["FORM_CODES"]["KIT_INFO"] . ")");
-    }
-
-    $task->clearAssignments();
-    $a = new APITaskAssignment(APITaskAssignment::SERVICE, null, null);
-    $task->addAssignments($a);
-    try {
-        $api->task_set($task);
-    } catch (Exception $e) {
-        // Ignore error
     }
 
     return $taskId;
@@ -1086,17 +1110,6 @@ function createRegisterKitTask($admissionId) {
 function createScanKitTask($admissionId) {
     $api = LinkcareSoapAPI::getInstance();
     $taskId = $api->task_insert_by_task_code($admissionId, $GLOBALS["TASK_CODES"]["SCAN_KIT"]);
-
-    $task = $api->task_get($taskId);
-
-    $task->clearAssignments();
-    $a = new APITaskAssignment(APITaskAssignment::SERVICE, null, null);
-    $task->addAssignments($a);
-    try {
-        $api->task_set($task);
-    } catch (Exception $e) {
-        // Ignore error
-    }
 
     return $taskId;
 }
