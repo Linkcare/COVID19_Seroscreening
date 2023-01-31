@@ -178,7 +178,7 @@ function checkTestResults($prescription) {
      */
     $filter = new TaskFilter();
     $filter->setObjectType('TASKS');
-    $filter->setTaskCodes('KIT_RESULTS,KIT_RESULTS_INTRODUCTION');
+    $filter->setTaskCodes(['KIT_RESULTS', 'KIT_RESULTS_INTRODUCTION']);
     $filter->setProgramIds($program->getId());
     $tasks = $api->case_get_task_list($patient->getId(), null, null, $filter);
 
