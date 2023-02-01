@@ -221,7 +221,6 @@ function processKit($kitInfo, $subscriptionId = null) {
         }
     } else {
         // We only have the KIT_ID and we have found a PATIENT for that device. Select the first admission of the CASE assigned to the KIT
-
         $searchCondition = new StdClass();
         $searchCondition->data_code = new StdClass();
         $searchCondition->data_code->name = 'KIT_ID';
@@ -324,14 +323,14 @@ function loadExistingAdmission($admissionId, $kitInfo, $caseByDevice) {
 
     $alreadyInitialized = $admission->getStatus() != 'ENROLLED';
 
-    return [$admission, $alreadyInitialized];
+    return [$admission, $alreadyInitialized, null];
 }
 
 /**
- * If the "HEALTH FORFAIT" is OPEN, remove the KIT ID value.
- * Teh function returns a LC2 Action to redirect to:
+ * If either the "HEALTH FORFAIT" or "SCAN_KIT_LINK" is OPEN, remove the KIT ID value.
+ * The function returns a LC2 Action to redirect to:
  * <ul>
- * <li>Display the "HEALTH FORFAIT" TASK if it is OPEN</li>
+ * <li>Display the TASK if it is OPEN</li>
  * <li>Display the CASE TASKS otherwise</li>
  * </ul>
  *
@@ -731,8 +730,14 @@ function initializeAdmission($kitInfo, $prescription, $caseId, $subscription, $a
         // Create an ADMISSION
         $invitationActive = false;
         try {
-            $admission = $api->admission_create($caseId, $subscription->getId(), null, null, true,
-                    $prescription ? $prescription->getPrescriptionData() : null);
+            $admissionSetupValues = $prescription ? $prescription->getPrescriptionData() : new stdClass();
+            /*
+             * Add the KIT ID to the Admission setup values
+             * This is useful because it indicates whether the KIT ID was known when the ADMISSION was created. Otherwise, it should be requested
+             * later in any of the TASKS of the PROGRAM
+             */
+            $admissionSetupValues->kit_id = $kitInfo->getId();
+            $admission = $api->admission_create($caseId, $subscription->getId(), null, null, true, $admissionSetupValues);
         } catch (APIException $e) {
             if ($e->errorCode == 'SUBSCRIPTION.INVITATION_NOT_FINISHED') {
                 /*
@@ -785,19 +790,7 @@ function initializeAdmission($kitInfo, $prescription, $caseId, $subscription, $a
 
     try {
         createKitInfoTask($admission->getId(), $kitInfo);
-        if ($admission->getStatus() != APIAdmission::STATUS_INCOMPLETE) {
-            // Only insert the Register Kit TASK if the ADMISSION is not incomplete
-            list($taskId, $formId) = createRegisterKitTask($admission->getId());
-            $lc2Action->setTaskId($taskId);
-            if ($formId) {
-                $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_FORM);
-                $lc2Action->setFormId($formId);
-            } else {
-                $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_TASK);
-            }
-        } else {
-            $lc2Action = redirectToFirstOpenTask($admission);
-        }
+        $lc2Action = redirectToFirstOpenTask($admission);
     } catch (APIException $e) {
         $failed = true;
         $lc2Action->setActionType(LC2Action::ACTION_ERROR_MSG);
@@ -988,116 +981,6 @@ function createKitInfoTask($admissionId, $kitInfo) {
     }
 
     return $taskId;
-}
-
-/**
- * DEPRECATED!!! Now the prescription INFO is passed as 'setup_values' to admission_create()<br>
- *
- * Inserts a "PRESCRIPTION_INFO" TASK in the ADMISSION and fills its questions with prescription Information
- * Return the ID of the inserted TASK
- *
- * @param int $admissionId
- * @param Prescription $prescription
- * @throws APIException
- * @return string
- */
-function createPrescriptionInfoTask($admissionId, $prescription) {
-    $api = LinkcareSoapAPI::getInstance();
-    $taskId = $api->task_insert_by_task_code($admissionId, $GLOBALS["TASK_CODES"]["PRESCRIPTION_INFO"]);
-    $task = $api->task_get($taskId);
-
-    // TASK inserted. Now update the questions with the prescription Information
-    $forms = $api->task_activity_list($taskId);
-    $targetForm = null;
-    foreach ($forms as $form) {
-        if ($form->getFormCode() == $GLOBALS["FORM_CODES"]["PRESCRIPTION_INFO"]) {
-            // The KIT_INFO FORM was found => update the questions with Kit Information
-            $targetForm = $api->form_get_summary($form->getId(), true, false);
-            break;
-        }
-    }
-
-    $arrQuestions = [];
-    if ($targetForm) {
-        if ($q = $targetForm->findQuestion($GLOBALS["PRESCRIPTION_INFO_Q_ID"]["PRESCRIPTION_ID"])) {
-            $q->setValue($prescription->getId());
-            $arrQuestions[] = $q;
-        }
-        if ($q = $targetForm->findQuestion($GLOBALS["PRESCRIPTION_INFO_Q_ID"]["PRESCRIPION_EXPIRATION"])) {
-            $q->setValue($prescription->getExpirationDate());
-            $arrQuestions[] = $q;
-        }
-        if ($q = $targetForm->findQuestion($GLOBALS["PRESCRIPTION_INFO_Q_ID"]["ROUNDS"])) {
-            $q->setValue($prescription->getRounds());
-            $arrQuestions[] = $q;
-        }
-        $api->form_set_all_answers($targetForm->getId(), $arrQuestions, true);
-    } else {
-        throw new APIException("FORM NOT FOUND", "PRESCRIPTION INFO FORM NOT FOUND: (" . $GLOBALS["FORM_CODES"]["PRESCRIPTION_INFO"] . ")");
-    }
-
-    $task->clearAssignments();
-    $a = new APITaskAssignment(APITaskAssignment::SERVICE, null, null);
-    $task->addAssignments($a);
-    try {
-        $api->task_set($task);
-    } catch (Exception $e) {
-        // Ignore error
-    }
-
-    return $taskId;
-}
-
-/**
- * Inserts a new "REGISTER_KIT" TASK in the ADMISSION
- * Returns an array with 2 elements:
- * 1- The ID of the inserted TASK
- * 2- The ID of the first open FORM (the TASK contains more FORMs, and we want to redirect to this specific FORM)
- *
- * @param string $admissionId
- * @throws APIException
- * @return string[]
- */
-function createRegisterKitTask($admissionId) {
-    $api = LinkcareSoapAPI::getInstance();
-    $taskId = $api->task_insert_by_task_code($admissionId, $GLOBALS["TASK_CODES"]["REGISTER_KIT"]);
-
-    if ($api->getSession()->getRoleId() != APITaskAssignment::PATIENT) {
-        /*
-         * The active user is a PROFESSIONAL ==> assign the inserted TASK to CASE.
-         * We need to do this because the REGISTER_KIT task is assigned by default to PATIENT, because it is necessary to support auto-administered
-         * ADMISSIONs (managed by the PATIENT)
-         * If we had assigned the TASK by default to a CASE MANAGER, the patient would not be able to change the assignment to CASE because task_set()
-         * needs professional privileges to execute
-         *
-         */
-        $task = $api->task_get($taskId);
-        $task->clearAssignments();
-        $a = new APITaskAssignment(APITaskAssignment::CASE_MANAGER, null, null);
-        $task->addAssignments($a);
-        try {
-            $api->task_set($task);
-        } catch (Exception $e) {
-            // Ignore error
-        }
-    }
-
-    // TASK inserted. Now update the questions with the Kit Information
-    $forms = $api->task_activity_list($taskId);
-
-    if (count($forms) > 1) {
-        /* @var APIForm $targetForm */
-        $targetForm = null;
-        foreach ($forms as $form) {
-            // find the first open FORM of the TASK or the last FORM if all are closed
-            $targetForm = $form;
-            if ($form->getStatus() == "OPEN") {
-                break;
-            }
-        }
-    }
-
-    return [$taskId, $targetForm ? $targetForm->getId() : null];
 }
 
 /**
