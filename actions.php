@@ -12,15 +12,8 @@ if (!$dbConnResult) {
 
 if ($_GET['action'] == 'check_test_results') {
     // Gatekeeper action
-    if (isset($_GET['qr'])) {
-        $prescription = new Prescription($_GET['qr']);
-    } else {
-        $prescription = new Prescription(null, $_GET['participant_id']);
-        $prescription->setId($_GET['prescription_id']);
-        $prescription->setProgram($_GET['program']);
-        $prescription->setTeam($_GET['team']);
-    }
-    $testInfo = checkGatekeeperAccess($prescription);
+
+    $testInfo = checkGatekeeperAccess($_GET['qr'], $_GET['participant_id'], $_GET['prescription_id'], $_GET['program'], $_GET['team']);
     header('Content-Type: application/json');
     // Pass only the necessary information as response to the request
     $res = new stdClass();

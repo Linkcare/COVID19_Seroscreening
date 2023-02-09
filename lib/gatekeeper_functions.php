@@ -22,7 +22,7 @@ const DIAGNOSTIC_EXPIRED = 4;
  * @param Prescription $prescription
  * @return StdClass
  */
-function checkGatekeeperAccess($prescription) {
+function checkGatekeeperAccess($qr = null, $participantId = null, $prescriptionId = null, $programId = null, $teamId = null) {
     $results = new StdClass();
     $results->result = DIAGNOSTIC_UNKNOWN;
     $results->date = '';
@@ -56,7 +56,7 @@ function checkGatekeeperAccess($prescription) {
     }
 
     try {
-        $result = checkTestResults($prescription);
+        $result = checkTestResults($qr, $participantId, $prescriptionId, $programId, $teamId);
     } catch (APIException $e) {
         $results->error = $e->getMessage();
         return $results;
@@ -85,7 +85,7 @@ function checkGatekeeperAccess($prescription) {
  * @param Prescription $prescription
  * @return StdClass
  */
-function checkTestResults($prescription) {
+function checkTestResults($qr = null, $participantId = null, $prescriptionId = null, $programId = null, $teamId = null) {
     $results = new StdClass();
     $results->result = DIAGNOSTIC_UNKNOWN;
     $results->date = '';
@@ -95,25 +95,64 @@ function checkTestResults($prescription) {
     $results->output = null;
     $results->expiration = null;
 
-    if (!$prescription) {
+    if (!$programId) {
+        // Use the default PROGRAM defined in the configuration
+        $programId = $GLOBALS["PROGRAM_CODE"];
+    }
+
+    $api = LinkcareSoapAPI::getInstance();
+
+    $prescription = null;
+    if ($qr) {
+        // Check whether it is a Linkcare QR Object or a prescriptionQR
+        try {
+            $qrObject = $api->qr_get($qr);
+            $patientId = $qrObject->getProperty('case');
+        } catch (Exception $e) {
+            // Apparently it is not a Linkcare QR Object, so we try as a Prescription QR
+            $prescription = new Prescription($qr);
+            if ($prescription->getProgram()) {
+                // The PROGRAM in the prescription overrides other program provided by default
+                $programId = $prescription->getProgram();
+            }
+        }
+    } else {
+        $prescription = new Prescription(null, $participantId);
+        $prescription->setId($prescriptionId);
+        $prescription->setProgram($programId);
+        $prescription->setTeam($teamId);
+    }
+
+    $patient = null;
+    $program = null;
+    $found = false;
+
+    if ($patientId) {
+        $patient = $api->case_get($patientId);
+        $found = true;
+    }
+
+    if (!$found && !$prescription) {
         $results->error = 'Invalid QR';
         return $results;
     }
 
     $timezone = "0";
-    $patient = null;
-    $found = false;
 
-    $api = LinkcareSoapAPI::getInstance();
+    if (!$found) {
+        if ($prescription->getAdmissionId()) {
+            // We know the ADMISSION. Use it to obtain the PATIENT and the PROGRAM
+            $admission = $api->admission_get($prescription->getAdmissionId());
+            $patient = $api->case_get($admission->getCaseId());
+            $program = $admission->getSubscription()->getProgram();
+            // The PROGRAM of the ADMISSION overrides other program provided by default
+            $programId = $program->getId();
+            $found = true;
+        }
+    }
 
-    if ($prescription->getAdmissionId()) {
-        // We know the ADMISSION. Use it to obtain the PATIENT and the PROGRAM
-        $admission = $api->admission_get($prescription->getAdmissionId());
-        $patient = $api->case_get($admission->getCaseId());
-        $program = $admission->getSubscription()->getProgram();
-        $found = true;
-    } else {
-        $program = $api->program_get($prescription->getProgram());
+    if (!$program) {
+        $program = $api->program_get($programId);
     }
 
     if (!$program) {

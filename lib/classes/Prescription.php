@@ -32,13 +32,12 @@ class Prescription {
      * <li>A Base64 encoded string containing a JSON with prescription info</li>
      * <li>An URL with a parameter called 'prescription' that is a Base64 encoded string containing a JSON with prescription info.
      * Example: https://covid19-service.linkcareapp.com/?prescription=jkasdkajshdakldasdasdjahjdshgoeqwruiqrhasjk</li>
-     * <li>An URL without parameters a parameter called 'prescription' that is a Base64 encoded string containing a JSON with prescription info.
+     * <li>An URL without parameters where the last directory of the path is a Base64 encoded string containing a JSON with prescription info.
      * Example: https://covid19-service.linkcareapp.com/?prescription=jkasdkajshdakldasdasdjahjdshgoeqwruiqrhasjk</li>
      * </ul>
      *
      * @param string $prescriptionStr
-     * @param boolean $allowParticipantId (default = false) If true, the value in $str can be a single value that will be interpreted as the
-     *        ParticipantId
+     * @param string $$participant (default = null) ParticipantId
      */
     function __construct($prescriptionStr = null, $participant = null) {
         $this->withCheckDigit = $GLOBALS['QR_WITH_CHECK_DIGIT'];
@@ -86,16 +85,6 @@ class Prescription {
         } else {
             if ($prescriptionStr) {
                 $pd = json_decode(base64_decode($prescriptionStr));
-                // Temporary change implemented to solve a problem in Andorra, where due to an error a lot of duplicated prescriptionIds were
-                // generated
-                // if ($pd->id) {
-                // $tz_object = new DateTimeZone('UTC');
-                // $datetime = new DateTime();
-                // $datetime->setTimezone($tz_object);
-                // $today = $datetime->format('Ymd_His');
-                // $pd->id = $today . $pd->id;
-                // }
-
                 if ($pd) {
                     $this->prescriptionData = $pd;
                     $this->valid = (trim($pd->id) && trim($pd->program)) || trim($pd->admission);

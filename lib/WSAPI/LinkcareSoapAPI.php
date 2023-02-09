@@ -600,6 +600,24 @@ class LinkcareSoapAPI {
         $this->invoke('form_set_all_answers', $params);
     }
 
+    /**
+     *
+     * @param string $qr
+     * @return APIQR
+     */
+    public function qr_get($qr) {
+        $qrObject = null;
+        $params = ['qr' => $qr];
+        $resp = $this->invoke('qr_get', $params);
+        if (!$resp->getErrorCode()) {
+            if ($found = simplexml_load_string($resp->getResult())) {
+                $qrObject = APIQR::parseXML($found);
+            }
+        }
+
+        return $qrObject;
+    }
+
     /*
      * **********************************
      * PRIVATE METHODS
