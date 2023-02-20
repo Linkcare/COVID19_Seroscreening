@@ -318,6 +318,7 @@ class KitInfo {
 
         $callbackUri = HttpHelper::urlAddParam($callbackUri, 'kit_id', $this->getId());
 
+        $lc2AuthUrl = HttpHelper::urlAddParam($lc2AuthUrl, 'team', $this->getTeamCode());
         $lc2AuthUrl = HttpHelper::urlAddParam($lc2AuthUrl, 'redirect_uri', $callbackUri);
 
         return $lc2AuthUrl;

@@ -353,8 +353,7 @@ function invalidateKit($admission, $errorCode = null) {
     $filter = new TaskFilter();
     $filter->setObjectType('TASKS');
     $filter->setStatusIds('OPEN');
-    $taskCodes = [$GLOBALS["TASK_CODES"]["HEALTH_FORFAIT"], $GLOBALS["TASK_CODES"]["SCAN_KIT_LINK"]];
-    $filter->setTaskCodes(implode(',', $taskCodes));
+    $filter->setTaskCodes([$GLOBALS["TASK_CODES"]["HEALTH_FORFAIT"], $GLOBALS["TASK_CODES"]["SCAN_KIT_LINK"]]);
     $tasks = $api->admission_get_task_list($admission->getId(), null, null, $filter);
     $hfTask = null;
     foreach ($tasks as $t) {
@@ -753,6 +752,8 @@ function initializeAdmission($kitInfo, $prescription, $caseId, $subscription, $a
             $admission = null;
         }
 
+        $admissionCreated = ($admission != null) && $admission->isNew();
+
         if ($invitationActive) {
             $error = new ErrorInfo(ErrorInfo::INVITATION_ACTIVE);
             $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_CASE);
@@ -765,13 +766,21 @@ function initializeAdmission($kitInfo, $prescription, $caseId, $subscription, $a
             $lc2Action->setErrorMessage($api->errorMessage());
             return $lc2Action;
         } elseif (!$admission->isNew()) {
-            // There already exists an active Admission for the patient. Cannot create a new Admission
-            $error = new ErrorInfo(ErrorInfo::ADMISSION_ACTIVE);
-            $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_CASE);
-            $lc2Action->setErrorMessage($error->getErrorMessage());
-            return $lc2Action;
+            /*
+             * There already exists an active Admission in the selected SUBSCRIPTION for the patient.
+             * If the Admission has already been initialized with the Kit Information (contains a "KIT_INFO" TASK), then report an error indicating
+             * that the Admission already exists and is active.
+             * If the "KIT_INFO TASK" doesn't exist, then it is not considered an error, because in an auto-administerd scenario (the patient scans
+             * the kit and performs the test on his own), it si possible that the process of sign-up in the LC2 platform generates automatically an
+             * empty ADMISSION. In this case we only need to initialize the ADMISSION by creating the TASK and assigning the Kit information.
+             */
+            if (kitInfoTaskExists($admission)) {
+                $error = new ErrorInfo(ErrorInfo::ADMISSION_ACTIVE);
+                $lc2Action->setActionType(LC2Action::ACTION_REDIRECT_TO_CASE);
+                $lc2Action->setErrorMessage($error->getErrorMessage());
+                return $lc2Action;
+            }
         }
-        $admissionCreated = true;
     } else {
         // Initialize an existing ADMISSION
     }
@@ -841,8 +850,7 @@ function updateAdmission($admission, $kitInfo) {
 
     $filter = new TaskFilter();
     $filter->setObjectType('TASKS');
-    $taskCodes = [$GLOBALS["TASK_CODES"]["KIT_RESULTS"], $GLOBALS["TASK_CODES"]["REGISTER_KIT"]];
-    $filter->setTaskCodes(implode(',', $taskCodes));
+    $filter->setTaskCodes([$GLOBALS["TASK_CODES"]["KIT_RESULTS"], $GLOBALS["TASK_CODES"]["REGISTER_KIT"]]);
     $tasks = $api->admission_get_task_list($admission->getId(), null, null, $filter);
     $kitResultsTask = null;
     $registerKitTask = null;
@@ -907,6 +915,27 @@ function updateAdmission($admission, $kitInfo) {
     }
 
     return $lc2Action;
+}
+
+/**
+ * Verify whether the "KIT_INFO" TASK already exists in the ADMISSION
+ *
+ * @param APIAdmission $admission
+ * @throws APIException
+ * @return boolean
+ */
+function kitInfoTaskExists($admission) {
+    $api = LinkcareSoapAPI::getInstance();
+
+    $lc2Action = new LC2Action();
+    $lc2Action->setAdmissionId($admission->getId());
+    $lc2Action->setCaseId($admission->getCaseId());
+
+    $filter = new TaskFilter();
+    $filter->setObjectType('TASKS');
+    $filter->setTaskCodes($GLOBALS["TASK_CODES"]["KIT_INFO"]);
+    $tasks = $api->admission_get_task_list($admission->getId(), null, null, $filter);
+    return !empty($tasks);
 }
 
 /**
