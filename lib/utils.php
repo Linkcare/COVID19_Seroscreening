@@ -58,6 +58,28 @@ function NullableInt($value) {
 }
 
 /**
+ * Returns true if the string $needle is found exactly at the begining of $haystack
+ *
+ * @param string|string[] $needle
+ * @param string $haystack
+ * @return boolean
+ */
+function startsWith($needle, $haystack) {
+    if (!is_array($needle)) {
+        $needle = [$needle];
+    }
+    if (empty($needle)) {
+        return false;
+    }
+    foreach ($needle as $x) {
+        if (strpos($haystack, $x) === 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
  * Converts a expression to an string if it is not null.
  * Otherwise returns null.
  * An zero-length string is considered NULL

@@ -1,5 +1,4 @@
 <?php
-include_once ("class.DbManagerOracle.php");
 
 class Database {
 
@@ -14,14 +13,10 @@ class Database {
     static public function init($connString = null) {
         $ret = null;
         try {
-            self::$backend = new DbManagerOracle();
-            self::$backend->setURI($connString);
-            self::$backend->ConnectServer(false);
+            $dbData = DbManager::init($connString);
+            $dbData->ConnectServer();
 
-            /* Fix the format that the obtained DATE fields from the DB will have */
-            $sql = "ALTER SESSION SET NLS_DATE_FORMAT = 'yyyy-mm-dd hh24:mi:ss'";
-            self::getInstance()->ExecuteQuery($sql);
-
+            self::$backend = $dbData;
             $ret = true;
         } catch (Exception $e) {
             $ret = $e->getMessage();

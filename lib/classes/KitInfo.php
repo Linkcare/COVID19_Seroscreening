@@ -398,7 +398,9 @@ class KitInfo {
             $ipdat = null;
         }
 
-        $arrVariables[':id'] = self::getNextTrackingId();
+        $id = null;
+        Database::getInstance()->getNextSequenceValue('SEQ_TRACKING', $id);
+        $arrVariables[':id'] = $id;
         $arrVariables[':created'] = $today;
         $arrVariables[':kitId'] = $this->getId();
         $arrVariables[':kitStatus'] = $this->getStatus();
@@ -410,14 +412,12 @@ class KitInfo {
         $arrVariables[':cityName'] = $ipdat ? $ipdat->geoplugin_city : null;
         $sql = "INSERT INTO KIT_TRACKING (ID_TRACKING, CREATED, ID_KIT, KIT_STATUS, ACTION_TYPE, ID_PRESCRIPTION, IP, LINKCARE_URL, COUNTRY, CITY) VALUES (:id, :created, :kitId, :kitStatus, :actionType, :prescriptionId, :ipAddress, :targetUrl, :countryName, :cityName)";
         Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
-    }
 
-    static private function getNextTrackingId() {
-        // if ($GLOBALS["BBDD"] == "ORACLE") {
-        $sql = "SELECT SEQ_TRACKING.NEXTVAL AS NEXTV FROM DUAL";
-        $rst = Database::getInstance()->ExecuteQuery($sql);
-        $rst->Next();
-        return $rst->GetField("NEXTV");
+        $error = Database::getInstance()->getError();
+        if (!$error->getErrorCode()) {
+            Database::getInstance()->getLastInsertedId($id);
+            $this->id = $id;
+        }
     }
 
     static public function insertKit($kitId, $batch) {

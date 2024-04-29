@@ -3,10 +3,11 @@ session_start();
 
 require_once ("utils.php");
 require_once ("WSAPI/WSAPI.php");
-require_once "classes/Database.Class.php";
-require_once "classes/class.DbManagerOracle.php";
-require_once "classes/class.DbManagerResultsOracle.php";
+require_once "classes/DbManager.php";
+require_once "classes/Database.php";
+require_once "classes/DataModels.php";
 require_once "classes/HttpHelper.php";
+require_once "classes/LKLogger.php";
 require_once "classes/KitException.php";
 require_once 'classes/KitInfo.php';
 require_once 'classes/ErrorInfo.php';

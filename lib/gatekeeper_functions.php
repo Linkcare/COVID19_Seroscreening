@@ -298,7 +298,9 @@ function storeGatekeeperTracking($testResult, $qr) {
         $ipAddress = $_SERVER['REMOTE_ADDR'];
     }
 
-    $arrVariables[':id'] = getNextTrackingId();
+    $id = null;
+    Database::getInstance()->getNextSequenceValue('SEQ_GATEKEEPER', $id);
+    $arrVariables[':id'] = $id;
     $arrVariables[':instanceId'] = $GLOBALS['GATEKEEPER_INSTANCE'];
     $arrVariables[':created'] = $today;
     $arrVariables[':patientId'] = $testResult->patientId;
@@ -309,12 +311,4 @@ function storeGatekeeperTracking($testResult, $qr) {
     $arrVariables[':qr'] = $qr;
     $sql = "INSERT INTO GATEKEEPER_TRACKING (ID_TRACKING, CREATED, ID_INSTANCE, ID_CASE, ID_ADMISSION, OUTCOME, TEST_RESULT, IP, QR) VALUES (:id, :created, :instanceId, :patientId, :admissionId, :outcome, :testResult, :ipAddress, :qr)";
     Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
-}
-
-function getNextTrackingId() {
-    // if ($GLOBALS["BBDD"] == "ORACLE") {
-    $sql = "SELECT SEQ_GATEKEEPER.NEXTVAL AS NEXTV FROM DUAL";
-    $rst = Database::getInstance()->ExecuteQuery($sql);
-    $rst->Next();
-    return $rst->GetField("NEXTV");
 }

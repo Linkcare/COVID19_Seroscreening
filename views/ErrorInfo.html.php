@@ -1,6 +1,12 @@
 <?php
-/* @var ErrorInfo $errorInfo */
-$errorInfo = $GLOBALS["VIEW_MODEL"];
+if ($GLOBALS["VIEW_MODEL"] instanceof ErrorInfo) {
+    /* @var ErrorInfo $errorInfo */
+    $errorInfo = $GLOBALS["VIEW_MODEL"];
+    $errorCode = $errorInfo->getErrorCode();
+    $errorMessage = Localization::translateError($errorCode);
+} else {
+    $errorMessage = $GLOBALS["VIEW_MODEL"];
+}
 ?>    
         <div class="container col-lg-4 col-md-8">
         	<?php
@@ -17,10 +23,10 @@ $errorInfo = $GLOBALS["VIEW_MODEL"];
         ?>
         	<p class="mt-4 border border-secondary rounded text-center">
         		<?php
-        if ($errorInfo->getErrorCode() == ErrorInfo::INVALID_KIT) {
-            echo (Localization::translateError($errorInfo->getErrorCode()) . ': <span style="color:red;">' . $_GET["id"] . '</span>');
+        if ($errorCode == ErrorInfo::INVALID_KIT) {
+            echo ($errorMessage . ': <span style="color:red;">' . $_GET["id"] . '</span>');
         } else {
-            echo (Localization::translateError($errorInfo->getErrorCode()));
+            echo ($errorMessage);
         }
         ?>
         	</p>
