@@ -398,9 +398,9 @@ class KitInfo {
             $ipdat = null;
         }
 
-        $id = null;
-        Database::getInstance()->getNextSequenceValue('SEQ_TRACKING', $id);
-        $arrVariables[':id'] = $id;
+        $trackingId = null;
+        Database::getInstance()->getNextSequenceValue('SEQ_TRACKING', $trackingId);
+        $arrVariables[':id'] = $trackingId;
         $arrVariables[':created'] = $today;
         $arrVariables[':kitId'] = $this->getId();
         $arrVariables[':kitStatus'] = $this->getStatus();
@@ -414,10 +414,6 @@ class KitInfo {
         Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
 
         $error = Database::getInstance()->getError();
-        if (!$error->getErrorCode()) {
-            Database::getInstance()->getLastInsertedId($id);
-            $this->id = $id;
-        }
     }
 
     static public function insertKit($kitId, $batch) {
