@@ -6,6 +6,7 @@ $_SESSION["KIT"] = serialize($kit);
 
 if ($kit->getStatus() == KitInfo::STATUS_NOT_USED) {
     $statusClassStyle = "text-success";
+    $expired = $kit->getExp_date() < currentDate();
 } else if ($kit->getStatus() == KitInfo::STATUS_DISCARDED || $kit->getStatus() == KitInfo::STATUS_EXPIRED) {
     $statusClassStyle = "text-danger";
 } else {
@@ -54,8 +55,8 @@ if ($kit->getStatus() == KitInfo::STATUS_NOT_USED) {
                 echo (Localization::translate('KitInfo.Label.ExpirationDate'));
                 ?>: </b>
 					<?php
-
-    echo ($kit->getExp_date());
+    $expiredStyle = ($expired ? ' style="color:red;"' : "");
+    echo ("<span" . $expiredStyle . ">" . $kit->getExp_date() . "</span>");
     ?>
     			</li>
               	<li class="list-group-item">
@@ -81,7 +82,7 @@ if ($kit->getStatus() == KitInfo::STATUS_NOT_USED) {
     	<!-- Buttons area -->
 		
         <?php
-        if ($kit->getStatus() == KitInfo::STATUS_NOT_USED) {
+        if ($kit->getStatus() == KitInfo::STATUS_NOT_USED && !$expired) {
             /* The Kit status is: not used */
             ?>
         	<button id="btnProcessKit" class="btn btn-success text-center btn-block btn-lg"><?php
